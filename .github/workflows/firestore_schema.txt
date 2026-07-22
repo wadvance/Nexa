@@ -1,0 +1,17 @@
+Colección users:
+
+    uid: (String)
+
+    biometric_voice_hash: (String - para validar tu voz)
+
+    trusted_zones: (Array de coordenadas GPS)
+
+    security_level: (Int - nivel de paranoia/vigilancia)
+
+Colección logs_threats:
+
+    timestamp: (DateTime)
+
+    type: (Espionaje, Infiltración, Riesgo Físico)
+
+    location: (GeoPoint)

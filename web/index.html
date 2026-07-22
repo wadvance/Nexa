@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="AETHERIS — Asistente de inteligencia artificial para seguridad y conocimiento. Manos libres.">
+  <meta name="theme-color" content="#7C4DFF">
+
+  <!-- PWA / iOS -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AETHERIS">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/Icon-512.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+
+  <title>AETHERIS</title>
+
+  <style>
+    /* ── Banner de instalación PWA ───────────────────────────── */
+    #pwa-install-banner {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, #1a0533 0%, #2d1b69 100%);
+      color: #fff;
+      padding: 16px 20px;
+      box-shadow: 0 -4px 24px rgba(124, 77, 255, 0.4);
+      border-top: 1px solid rgba(124, 77, 255, 0.5);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      align-items: center;
+      gap: 12px;
+      animation: slideUp 0.35s ease;
+    }
+    #pwa-install-banner.visible {
+      display: flex;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    #pwa-install-banner .pwa-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+    #pwa-install-banner .pwa-text {
+      flex: 1;
+    }
+    #pwa-install-banner .pwa-text strong {
+      display: block;
+      font-size: 15px;
+      color: #e8d5ff;
+    }
+    #pwa-install-banner .pwa-text span {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+    #pwa-btn-install {
+      background: #7C4DFF;
+      color: #fff;
+      border: none;
+      border-radius: 22px;
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    #pwa-btn-install:hover { background: #9c6fff; }
+    #pwa-btn-dismiss {
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    /* ── Splash mientras carga Flutter ──────────────────────── */
+    #flutter-loading {
+      position: fixed;
+      inset: 0;
+      background: #0D0D14;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 8888;
+      transition: opacity 0.4s;
+    }
+    #flutter-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loader-ring {
+      width: 56px; height: 56px;
+      border: 4px solid rgba(124,77,255,0.2);
+      border-top-color: #7C4DFF;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #flutter-loading p {
+      color: rgba(255,255,255,0.45);
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Splash de carga -->
+  <div id="flutter-loading">
+    <div class="loader-ring"></div>
+    <p>AETHERIS</p>
+  </div>
+
+  <!-- Banner de instalación PWA -->
+  <div id="pwa-install-banner">
+    <img class="pwa-icon" src="icons/Icon-192.png" alt="AETHERIS">
+    <div class="pwa-text">
+      <strong>Instalar AETHERIS</strong>
+      <span>Acceso rápido desde tu pantalla de inicio</span>
+    </div>
+    <button id="pwa-btn-install">Instalar</button>
+    <button id="pwa-btn-dismiss" aria-label="Cerrar">✕</button>
+  </div>
+
+  <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // ── PWA: capturar evento beforeinstallprompt ──────────────────
+    let _deferredPrompt = null;
+    const banner        = document.getElementById('pwa-install-banner');
+    const btnInstall    = document.getElementById('pwa-btn-install');
+    const btnDismiss    = document.getElementById('pwa-btn-dismiss');
+
+    // Solo mostrar si el usuario no lo descartó antes
+    const dismissed = sessionStorage.getItem('pwa-dismissed');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      if (!dismissed) {
+        // Mostrar después de 3s para no interrumpir la carga
+        setTimeout(() => banner.classList.add('visible'), 3000);
+      }
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (!_deferredPrompt) return;
+      banner.classList.remove('visible');
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      _deferredPrompt = null;
+      console.log('PWA install outcome:', outcome);
+    });
+
+    btnDismiss.addEventListener('click', () => {
+      banner.classList.remove('visible');
+      sessionStorage.setItem('pwa-dismissed', '1');
+    });
+
+    // iOS Safari: mostrar banner manual (no soporta beforeinstallprompt)
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone;
+
+    if (isIos && !isInStandaloneMode && !dismissed) {
+      setTimeout(() => {
+        banner.querySelector('.pwa-text span').textContent =
+          'Toca Compartir → "Añadir a pantalla inicio"';
+        banner.classList.add('visible');
+        // En iOS no hay prompt nativo, ocultar el botón instalar
+        btnInstall.style.display = 'none';
+      }, 3000);
+    }
+
+    // ── Ocultar splash cuando Flutter termina de cargar ──────────
+    window.addEventListener('flutter-first-frame', () => {
+      const loading = document.getElementById('flutter-loading');
+      if (loading) {
+        loading.classList.add('hidden');
+        setTimeout(() => loading.remove(), 500);
+      }
+    });
+  </script>
+</body>
+</html>

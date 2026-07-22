@@ -1,0 +1,48 @@
+name: nexa_aetheris
+description: "AETHERIS Security System"
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.12.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Bluetooth para vehiculo
+  flutter_blue_plus: ^1.31.0
+  # Criptografia SHA-256 (biometria de voz)
+  crypto: ^3.0.3
+  # Variables de entorno
+  flutter_dotenv: ^5.1.0
+  # HTTP para APIs externas
+  http: ^1.2.2
+  # STT reconocimiento de voz
+  speech_to_text: ^7.4.0
+  # TTS sintesis de voz
+  flutter_tts: ^4.0.2
+  # Firebase
+  firebase_core: ^3.15.0
+  firebase_auth: ^5.6.0
+  cloud_firestore: ^5.6.0
+  # Persistencia local
+  shared_preferences: ^2.2.2
+  # Interop web
+  web: ^1.1.1
+  # Geolocalizacion
+  geolocator: ^10.1.0
+  # Permisos
+  permission_handler: ^11.0.0
+  # Notificaciones locales (alertas proactivas AETHERIS)
+  flutter_local_notifications: ^17.2.2
+  # Zona horaria para upcoming-notification
+  timezone: ^0.9.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
