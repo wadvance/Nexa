@@ -7,6 +7,8 @@ import 'services/voice_biometric_service.dart';
 import 'services/location_service.dart';
 import 'services/owner_guard_service.dart';
 import 'services/conversation_memory_service.dart';
+import 'services/notification_service.dart';
+import 'services/proactive_context_service.dart';
 import 'presentation/screens/auth/auth_gate.dart';
 import 'presentation/screens/voice_test_screen.dart';
 
@@ -43,6 +45,16 @@ void main() async {
     await ConversationMemoryService.load();
   } catch (e) {
     dev.log('ConversationMemory init error: $e');
+  }
+  try {
+    await NotificationService.instance.init();
+  } catch (e) {
+    dev.log('Notification init error: $e');
+  }
+  try {
+    ProactiveContextService().start();
+  } catch (e) {
+    dev.log('ProactiveContext start error: $e');
   }
   runApp(const AetherisApp());
 }

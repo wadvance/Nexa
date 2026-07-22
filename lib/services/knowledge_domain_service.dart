@@ -236,9 +236,13 @@ class KnowledgeDomainService {
   /// Devuelve una respuesta experta para [query] en el [domain] detectado.
   static Future<String> answer(String query, {KnowledgeDomain? domain}) async {
     final d = domain ?? detectDomain(query);
-    final systemInstruction = _systemPromptForDomain(d);
+    final systemInstruction = systemPromptForDomain(d);
     return AetherisBrain.getExpertAdvice(query, systemInstruction);
   }
+
+  /// System prompt del dominio (público para uso de otros servicios).
+  static String systemPromptForDomain(KnowledgeDomain d) =>
+      _systemPromptForDomain(d);
 
   static String _systemPromptForDomain(KnowledgeDomain d) {
     switch (d) {
