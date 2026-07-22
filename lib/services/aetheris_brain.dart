@@ -6,6 +6,7 @@ import 'conversation_memory_service.dart';
 import 'knowledge_domain_service.dart';
 import 'tool_registry.dart';
 import 'user_memory_service.dart';
+import 'teaching_parser.dart';
 
 /// AetherisBrain — núcleo IA de AETHERIS con razonamiento ReAct.
 ///
@@ -98,6 +99,12 @@ notaste, pero mantente atento a réplicas.
   }) async {
     await UserMemoryService.recordInteraction();
 
+    // Primero, intentamos capturar frases de "enseñanza" del dueño.
+    // Si la frase es de este tipo, AETHERIS no consulta al LLM: responde
+    // localmente con la confirmación del aprendizaje.
+    final teach = await TeachingParser.tryHandle(question);
+    if (teach.handled) return teach.reply;
+
     // Detectar dominio y construir instrucción inyectable
     final domain  = KnowledgeDomainService.detectDomain(question);
     final sysDom  = extraInstruction.isNotEmpty
@@ -144,6 +151,10 @@ notaste, pero mantente atento a réplicas.
 
     String workingReply = '';
     for (int step = 0; step < maxReActSteps; step++) {
+      // Si el dueño reformuló como enseñanza durante el bucle, capturarlo
+      final midTeach = await TeachingParser.tryHandle(question);
+      if (midTeach.handled) return midTeach.reply;
+
       final messages = List<Map<String, dynamic>>.from(baseMessages)
         ..add({'role': 'user', 'content': question})
         ..addAll(_buildReActTrace(workingReply));

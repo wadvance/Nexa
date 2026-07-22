@@ -90,6 +90,26 @@ class UserMemoryService {
     }).toList();
   }
 
+  /// Elimina un ejemplo guardado (por índice).
+  static Future<bool> removeExampleAt(int index) async {
+    final all = await allExamples();
+    if (index < 0 || index >= all.length) return false;
+    all.removeAt(index);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCustomExamples, jsonEncode(all));
+    return true;
+  }
+
+  /// Borra un hecho guardado por clave.
+  static Future<bool> removeFact(String key) async {
+    final facts = await allFacts();
+    if (!facts.containsKey(key.toLowerCase())) return false;
+    facts.remove(key.toLowerCase());
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kOwnerFacts, jsonEncode(facts));
+    return true;
+  }
+
   /// Busca ejemplos cuyo trigger coincida parcialmente con [query].
   static Future<List<Map<String, String>>> findMatches(String query) async {
     final q = query.toLowerCase().trim();
