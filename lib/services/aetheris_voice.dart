@@ -267,8 +267,9 @@ class _WebAetherisVoice extends AetherisVoice {
       AppLogger.error('WebSTT init: $e');
     }
 
-    _utterance.lang = 'es-MX';
+    _utterance.lang = 'es-CO';
     _utterance.rate = 1.05;
+    _utterance.pitch = 0.5;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
   }
 
@@ -344,13 +345,32 @@ class _WebAetherisVoice extends AetherisVoice {
     if (!_webSttReady) return '';
     _state = VoiceState.listening;
     final completer = Completer<String>();
+    Timer? partialTimer;
+    String lastWords = '';
+
+    void deliver(String text) {
+      partialTimer?.cancel();
+      if (!completer.isCompleted) completer.complete(text);
+    }
+
     try {
       await _webStt.listen(
         onResult: (r) {
           final words = r.recognizedWords.trim();
+          if (words.isNotEmpty) lastWords = words;
           AppLogger.info('WebSTT partial: "$words" final=${r.finalResult}');
+
           if (r.finalResult && words.isNotEmpty) {
-            if (!completer.isCompleted) completer.complete(words);
+            deliver(words);
+            return;
+          }
+
+          if (words.isNotEmpty) {
+            partialTimer?.cancel();
+            partialTimer = Timer(const Duration(milliseconds: 800), () {
+              AppLogger.info('WebSTT partial estable → "${words}"');
+              deliver(words);
+            });
           }
         },
         listenOptions: stt.SpeechListenOptions(
@@ -361,8 +381,11 @@ class _WebAetherisVoice extends AetherisVoice {
         ),
       );
       final result = await completer.future.timeout(
-        const Duration(seconds: 7),
-        onTimeout: () => '',
+        const Duration(seconds: 8),
+        onTimeout: () {
+          if (lastWords.isNotEmpty) return lastWords;
+          return '';
+        },
       );
       _state = VoiceState.idle;
       return result;
