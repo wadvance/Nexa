@@ -12,8 +12,11 @@ import 'package:http/http.dart' as http;
 ///   • NOAA/NWS Alerts      → alertas meteorológicas severas (servicio abierto)
 ///   • GDACS               → alertas globales de desastres
 class RealTimeHazardService {
-  static String get _owmKey =>
-      dotenv.env['OPENWEATHERMAP_API_KEY'] ?? '';
+  static String get _owmKey {
+    final de = dotenv.env['OPENWEATHERMAP_API_KEY'];
+    if (de != null && de.isNotEmpty) return de;
+    return const String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // SISMOS (USGS)

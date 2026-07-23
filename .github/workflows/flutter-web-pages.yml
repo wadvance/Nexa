@@ -57,27 +57,35 @@ jobs:
         shell: bash
         run: flutter pub get
 
-      - name: Create .env (root + assets/) from secrets
+      - name: Verify secrets
         shell: bash
         run: |
-          cat > .env <<EOF
-          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
-          EOF
-          cat > assets/.env <<EOF
-          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
-          EOF
           if [ -z "${OPENROUTER_API_KEY}" ]; then
             echo "FATAL: OPENROUTER_API_KEY secret empty"
             exit 1
           fi
-          echo ".env and assets/.env created"
-          ls -la .env assets/.env
+          echo "Secrets OK (openrouter length=${#OPENROUTER_API_KEY})"
 
-      - name: Build web
+      - name: Create legacy .env for pubspec asset (local runs only)
         shell: bash
-        run: flutter build web --release --base-href /Nexa/ --dart-define=FLUTTER_WEB_USE_SKIA=true
+        run: |
+          # Aunque ahora no lo usamos en web (usamos --dart-define),
+          # lo dejamos por si algún día se necesita en modo debug.
+          mkdir -p assets
+          cat > .env <<EOF
+          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+          EOF
+          cp .env assets/.env
+          echo "Legacy .env created"
+
+      - name: Build web (--dart-define for secrets)
+        shell: bash
+        run: >
+          flutter build web --release --base-href /Nexa/
+          --dart-define=FLUTTER_WEB_USE_SKIA=true
+          --dart-define=OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+          --dart-define=OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
 
       - name: Inspect build/web
         shell: bash

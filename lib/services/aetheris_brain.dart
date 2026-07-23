@@ -300,13 +300,17 @@ notaste, pero mantente atento a réplicas.
   }
 
   static String? _readKey() {
+    // Intentar desde dotenv primero (móvil/desktop)
     final candidates = [
       dotenv.env['OPENROUTER_API_KEY'],
       dotenv.env['openrouter_api_key'],
     ];
     for (final k in candidates) {
-      if (k != null && k.trim().startsWith('sk-or-')) return k.trim();
+      if (k != null && k.trim().isNotEmpty) return k.trim();
     }
+    // Fallback para web: leer desde --dart-define
+    const fromEnv = String.fromEnvironment('OPENROUTER_API_KEY');
+    if (fromEnv.isNotEmpty) return fromEnv;
     return null;
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,12 +15,14 @@ import 'presentation/screens/voice_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Cargar .env solo en plataformas donde existe (móvil/desktop, NO web).
-  // En web, las claves vienen vía --dart-define y dotenv.load fallará silencioso.
-  try {
-    await dotenv.load(fileName: ".env").timeout(const Duration(seconds: 5));
-  } catch (e) {
-    dev.log('dotenv load skipped (using --dart-define on web): $e');
+  if (!kIsWeb) {
+    try {
+      await dotenv.load(fileName: ".env").timeout(const Duration(seconds: 5));
+    } catch (e) {
+      dev.log('dotenv load error: $e');
+    }
+  } else {
+    dev.log('web: skipping dotenv.load, using --dart-define');
   }
   try {
     await Firebase.initializeApp(
