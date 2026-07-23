@@ -298,7 +298,7 @@ class _WebAetherisVoice extends AetherisVoice {
         AppLogger.info('WebSpeech: "$transcript"');
 
         _stabilityTimer?.cancel();
-        _stabilityTimer = Timer(const Duration(milliseconds: 800), () {
+        _stabilityTimer = Timer(const Duration(milliseconds: 400), () {
           if (_webNextResult != null) {
             _webNextResult!.complete(transcript);
             _webNextResult = null;

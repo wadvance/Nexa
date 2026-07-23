@@ -374,18 +374,7 @@ class _HomeScreenState extends State<HomeScreen>
                       color: Colors.white.withValues(alpha: 0.35),
                       fontSize: 12)),
               const SizedBox(height: 36),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _chip(Icons.verified_user, 'Propietario', () {
-                  if (!mounted) return;
-                  Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => const OwnerSetupScreen()));
-                }),
-                const SizedBox(width: 10),
-                _chip(Icons.history, 'Historial', () async {
-                  setState(() => _showHistory = true);
-                  await _cargarHistorial();
-                }),
-              ]),
+              // chips removed (propietario, historial)
             ],
           ),
         ),
@@ -411,14 +400,6 @@ class _HomeScreenState extends State<HomeScreen>
                       letterSpacing: 2)),
               Row(children: [
                 IconButton(
-                  icon: const Icon(Icons.history, color: Colors.white38, size: 22),
-                  tooltip: 'Historial',
-                  onPressed: () async {
-                    setState(() => _showHistory = true);
-                    await _cargarHistorial();
-                  },
-                ),
-                IconButton(
                   icon: const Icon(Icons.manage_accounts,
                       color: Colors.white38, size: 22),
                   tooltip: 'Propietario',
@@ -433,34 +414,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
 
-        // ── Globos de conversación ──────────────────────────────────────
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_lastUser.isNotEmpty)
-                  _bubble(
-                    text: _lastUser,
-                    isUser: true,
-                    icon: Icons.person_outline,
-                    color: Colors.deepPurple.shade800,
-                  ),
-                if (_lastUser.isNotEmpty) const SizedBox(height: 10),
-                if (_lastBot.isNotEmpty)
-                  _bubble(
-                    text: _lastBot,
-                    isUser: false,
-                    icon: Icons.smart_toy_outlined,
-                    color: Colors.blueGrey.shade900,
-                  ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
+        const Spacer(),
 
         // ── Orb central + estado ────────────────────────────────────────
         // ValueListenableBuilder reconstruye SOLO este subtree cuando
@@ -536,21 +490,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
-                const SizedBox(height: 14),
-
-                // Estado de voz
-                Text(
-                  _statusText,
-                  style: TextStyle(
-                      color: speaking
-                          ? Colors.blueAccent
-                          : listening
-                              ? Colors.redAccent
-                              : Colors.white54,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500),
-                ),
-
                 const SizedBox(height: 18),
 
                 // ── CONTROLES ──────────────────────────────────────────
@@ -618,15 +557,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ]),
 
-                const SizedBox(height: 10),
-                Text(
-                  speaking
-                      ? 'Toca el círculo o el botón rojo para parar'
-                      : 'Toca el círculo para interrumpir',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      fontSize: 11),
-                ),
               ]),
             );
           },
@@ -730,74 +660,5 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Widgets auxiliares ────────────────────────────────────────────────────
 
-  Widget _bubble({
-    required String text,
-    required bool isUser,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Row(
-      mainAxisAlignment:
-          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!isUser) ...[
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.deepPurpleAccent.withValues(alpha: 0.3),
-            child: const Icon(Icons.smart_toy_outlined,
-                color: Colors.deepPurpleAccent, size: 18),
-          ),
-          const SizedBox(width: 8),
-        ],
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isUser ? 16 : 2),
-                bottomRight: Radius.circular(isUser ? 2 : 16),
-              ),
-            ),
-            child: Text(text,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 14, height: 1.4)),
-          ),
-        ),
-        if (isUser) ...[
-          const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.deepPurple.withValues(alpha: 0.4),
-            child: const Icon(Icons.person_outline,
-                color: Colors.white70, size: 18),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _chip(IconData icon, String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.deepPurple.shade900.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: Colors.deepPurpleAccent.withValues(alpha: 0.3)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: Colors.deepPurpleAccent, size: 16),
-          const SizedBox(width: 6),
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ]),
-      ),
-    );
-  }
+  // (removed unused _bubble and _chip)
 }
