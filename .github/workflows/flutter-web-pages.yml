@@ -21,33 +21,50 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY || '' }}
     steps:
+      - name: Show node version
+        run: echo "node: $(node --version)  flutter/dart will be set up next"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
+          flutter-version: '3.27.4'
           channel: stable
-          cache: true
 
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Enable web
+        run: flutter config --enable-web
 
-      - name: Create .env from secrets (Places API key may be empty)
+      - name: Verify Flutter
+        run: flutter --version && dart --version
+
+      - name: Upgrade Flutter / Dart (no-op if already current)
+        run: flutter pub get || (flutter pub upgrade --major-versions --null-safety && flutter pub get)
+
+      - name: Doctor (informational)
+        run: flutter doctor -v || true
+
+      - name: Create .env from secrets
         run: |
           cat > .env <<EOF
           OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
           OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
           EOF
-          echo ".env generated (lengths: openrouter=${#OPENROUTER_API_KEY}, openweather=${#OPENWEATHERMAP_API_KEY})"
-          test -n "$OPENROUTER_API_KEY" || (echo "ERROR: OPENROUTER_API_KEY secret is missing"; exit 1)
+          if [ -z "${OPENROUTER_API_KEY}" ]; then
+            echo "FATÁL: OPENROUTER_API_KEY secret vacío"
+            exit 1
+          fi
+          echo "OK: openrouter secret length=${#OPENROUTER_API_KEY}"
 
-      - name: Enable web
-        run: flutter config --enable-web
-
-      - name: Build for web (base-href /Nexa/)
-        run: flutter build web --release --base-href /Nexa/ --dart-define=FLUTTER_WEB_USE_SKIA=true
+      - name: Build web
+        run: |
+          flutter build web --release \
+            --base-href /Nexa/ \
+            --dart-define=FLUTTER_WEB_USE_SKIA=true \
+            2>&1 | tee build.log
+          echo "--- last 50 lines of build log ---"
+          tail -n 50 build.log
 
       - name: Prepare 404.html fallback
         run: cp build/web/index.html build/web/404.html
