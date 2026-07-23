@@ -368,7 +368,7 @@ class _WebAetherisVoice extends AetherisVoice {
           if (words.isNotEmpty) {
             partialTimer?.cancel();
             partialTimer = Timer(const Duration(milliseconds: 800), () {
-              AppLogger.info('WebSTT partial estable → "${words}"');
+              AppLogger.info('WebSTT partial estable: $words');
               deliver(words);
             });
           }
