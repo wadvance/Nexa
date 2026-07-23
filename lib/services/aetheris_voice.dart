@@ -231,6 +231,9 @@ class AetherisVoice {
       .replaceAll('Aetheris', 'Eteris')
       .replaceAll('aetheris', 'Eteris');
 
+  Future<void> startContinuous() async {}  // web only
+  void stopContinuous() {}                  // web only
+
   void stop() {
     _partialTimer?.cancel();
     try { _speech.stop(); } catch (_) {}
@@ -246,6 +249,10 @@ class _WebAetherisVoice extends AetherisVoice {
   final _utterance = web.SpeechSynthesisUtterance();
   web.SpeechSynthesis? get _synth => web.window.speechSynthesis;
   bool _webSttReady = false;
+  bool _webSttActive = false;                   // sesión continua iniciada
+  Completer<String>? _webNextResult;             // quien espera el próximo resultado
+  final List<String> _webPendingResults = [];    // resultados encolados mientras nadie espera
+  Timer? _webSttTimeout;                        // timeout de inactividad
 
   @override
   bool get sttReady => _webSttReady;
@@ -282,34 +289,36 @@ class _WebAetherisVoice extends AetherisVoice {
 
     web.SpeechSynthesisVoice? latinFemale;
     web.SpeechSynthesisVoice? latinAny;
-    web.SpeechSynthesisVoice? esFemale;
-    web.SpeechSynthesisVoice? fallback;
 
-    const latinLocales = ['es-mx', 'es-us', 'es-419', 'es-co', 'es-ar',
-                          'es-cl', 'es-pe', 'es-ve'];
+    const latinLocales = ['es-mx', 'es-us', 'es-419', 'es-la', 'es-co',
+                          'es-ar', 'es-cl', 'es-pe', 'es-ve'];
     const femaleHints = ['female', 'woman', 'mujer', 'femenina',
-                         'maria', 'sofia', 'elena', 'paula', 'carmen',
-                         'monica', 'laura', 'ana', 'valentina',
-                         'samantha', 'google', 'siri'];
+                         'maría', 'sofía', 'elena', 'paula', 'carmen',
+                         'mónica', 'laura', 'ana', 'valentina',
+                         'camila', 'isabella', 'gabriela', 'lucía',
+                         'samantha', 'helena', 'sabina'];
 
     for (final v in list) {
       final name = v.name.toLowerCase();
       final lang = v.lang.toLowerCase();
       if (!lang.startsWith('es')) continue;
 
-      fallback ??= v;
       final isLatin = latinLocales.any((l) => lang.startsWith(l));
       final isFemale = femaleHints.any((h) => name.contains(h));
 
       if (isLatin && isFemale) latinFemale ??= v;
       if (isLatin) latinAny ??= v;
-      if (isFemale && !isLatin) esFemale ??= v;
     }
 
-    final selected = latinFemale ?? latinAny ?? esFemale ?? fallback;
+    // Prioridad: latina femenina > cualquier latina > que el navegador elija
+    final selected = latinFemale ?? latinAny;
     if (selected != null) {
       _utterance.voice = selected;
       AppLogger.info('WebTTS: ${selected.name} (${selected.lang})');
+    } else {
+      // Sin voice explícito: el navegador elige la mejor voz para es-MX
+      _utterance.voice = null;
+      AppLogger.info('WebTTS: sin voz latina, el navegador elige');
     }
   }
 
@@ -336,26 +345,35 @@ class _WebAetherisVoice extends AetherisVoice {
     _state = VoiceState.idle;
   }
 
+  /// Inicia la escucha continua (una sola llamada a `listen()` por sesión).
   @override
-  Future<String> listenOnce() async {
-    if (!_webSttReady) return '';
-    // Asegurar que no haya una sesión previón colgada
-    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
-    _state = VoiceState.listening;
-    final completer = Completer<String>();
+  Future<void> startContinuous() async {
+    if (_webSttActive || !_webSttReady) return;
+    _webSttActive = true;
+    AppLogger.info('WebSTT: starting continuous session');
+
+    // Reiniciar cola
+    _webPendingResults.clear();
+    _webNextResult?.complete('');
+    _webNextResult = null;
+
     Timer? partialTimer;
-    String lastWords = '';
 
     void deliver(String text) {
       partialTimer?.cancel();
-      if (!completer.isCompleted) completer.complete(text);
+      partialTimer = null;
+      if (_webNextResult != null) {
+        _webNextResult!.complete(text);
+        _webNextResult = null;
+      } else {
+        _webPendingResults.add(text);
+      }
     }
 
     try {
       await _webStt.listen(
         onResult: (r) {
           final words = r.recognizedWords.trim();
-          if (words.isNotEmpty) lastWords = words;
           AppLogger.info('WebSTT partial: "$words" final=${r.finalResult}');
 
           if (r.finalResult && words.isNotEmpty) {
@@ -366,37 +384,60 @@ class _WebAetherisVoice extends AetherisVoice {
           if (words.isNotEmpty) {
             partialTimer?.cancel();
             partialTimer = Timer(const Duration(milliseconds: 800), () {
-              AppLogger.info('WebSTT partial estable: $words');
+              AppLogger.info('WebSTT stable partial: $words');
               deliver(words);
             });
           }
         },
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
-          listenFor: const Duration(seconds: 5),
-          pauseFor: const Duration(milliseconds: 400),
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(milliseconds: 500),
           partialResults: true,
         ),
       );
-      final result = await completer.future.timeout(
-        const Duration(seconds: 8),
-        onTimeout: () {
-          if (lastWords.isNotEmpty) return lastWords;
-          return '';
-        },
-      );
-      _state = VoiceState.idle;
-      return result;
     } catch (e) {
-      AppLogger.error('WebSTT listen: $e');
+      AppLogger.error('WebSTT startContinuous: $e');
+      _webSttActive = false;
       _state = VoiceState.idle;
-      return '';
+    }
+  }
+
+  /// Detiene la sesión continua.
+  @override
+  void stopContinuous() {
+    _webSttActive = false;
+    _webSttTimeout?.cancel();
+    _webSttTimeout = null;
+    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
+    _webNextResult?.complete('');
+    _webNextResult = null;
+  }
+
+  @override
+  Future<String> listenOnce() async {
+    if (!_webSttReady || !_webSttActive) return '';
+    // Si hay resultados encolados, devolver el siguiente
+    if (_webPendingResults.isNotEmpty) {
+      return _webPendingResults.removeAt(0);
+    }
+    // Esperar el próximo resultado
+    _state = VoiceState.listening;
+    _webNextResult = Completer<String>();
+    try {
+      return await _webNextResult!.future.timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => '',
+      );
+    } finally {
+      _webNextResult = null;
+      _state = VoiceState.idle;
     }
   }
 
   @override
   void stop() {
+    stopContinuous();
     _synth?.cancel();
-    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
   }
 }

@@ -89,42 +89,59 @@ class _HomeScreenState extends State<HomeScreen>
     await _voice.speak(mensaje);
     _syncVoiceState();
     if (kIsWeb) {
-      setState(() => _statusText = 'Toca el círculo para hablar');
+      setState(() => _statusText = 'Toca el círculo para empezar');
       _voiceState.value = VoiceState.idle;
     } else if (mounted) {
       _loop();
     }
   }
 
-  Future<void> _webListenOnce() async {
+  /// Web: inicia la sesión continua de voz tras el primer tap.
+  /// Después de eso todo es manos libres (el STT queda escuchando).
+  Future<void> _webStart() async {
+    if (_busy || _voice.speaking || !_started) return;
+    setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
+    _syncVoiceState();
     try {
-      if (_busy || _voice.speaking || !_started) return;
-      _syncVoiceState();
+      await _voice.startContinuous();
+      if (!mounted) return;
       if (!_voice.sttReady) {
-        setState(() => _statusText = '⚠ Micrófono no disponible');
+        setState(() { _busy = false; _statusText = '⚠ Micrófono no disponible'; });
         return;
       }
-      setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
-      // NOTA: sin await adicional antes de listenOnce para
-      // que el reconocimiento comience dentro del gesto del usuario.
+      // Obtener el primer resultado (el usuario ya está hablando)
       final texto = await _voice.listenOnce();
       if (!mounted) return;
       if (texto.isEmpty) {
-        setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
+        setState(() { _busy = false; _statusText = 'Toca el círculo para empezar'; });
         return;
       }
-      setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
-      _syncVoiceState();
+      await _processAndRespond(texto);
+      // A partir de aquí, manos libres vía _loop()
+      if (mounted) _loop();
+    } catch (e, st) {
+      AppLogger.error('_webStart: $e\n$st');
+      if (mounted) setState(() { _busy = false; _statusText = 'Error: toca de nuevo'; });
+    }
+  }
+
+  /// Procesa un texto y responde por voz.
+  Future<void> _processAndRespond(String texto) async {
+    setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
+    _syncVoiceState();
+    try {
       final respuesta = await _commands.execute(texto, context, _uid);
       _lastBot = respuesta;
       _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
+      setState(() => _statusText = respuesta);
       await _voice.speak(respuesta);
-      if (mounted) setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
-    } catch (e, st) {
-      AppLogger.error('_webListenOnce: $e\n$st');
-      if (mounted) setState(() { _busy = false; _statusText = 'Error: toca de nuevo'; });
+      _syncVoiceState();
+    } catch (e) {
+      AppLogger.error('_processAndRespond: $e');
+      if (mounted) setState(() => _statusText = 'Error al procesar');
     }
+    if (mounted) { setState(() => _busy = false); _syncVoiceState(); }
   }
 
   Future<void> _loop() async {
@@ -181,51 +198,15 @@ class _HomeScreenState extends State<HomeScreen>
       // Si llegó aquí, la voz está autorizada — ocultar warning si estaba visible
       if (_unauthorizedWarning.value) _unauthorizedWarning.value = false;
 
-      setState(() {
-        _busy       = true;
-        _lastUser   = texto;
-        _statusText = '⏳ Procesando…';
-      });
-
       // Palabras de parada
       if (_isStopWord(texto)) {
         await _voice.stopSpeaking();
         _syncVoiceState();
-        if (mounted) setState(() { _busy = false; _statusText = '🎤 Escuchando…'; });
         continue;
       }
 
-      String respuesta;
-      try {
-        respuesta = await _commands
-            .execute(texto, context, _uid) // ignore: use_build_context_synchronously
-            .timeout(const Duration(seconds: 25));
-        if (respuesta.trim().isEmpty) {
-          if (mounted) setState(() { _busy = false; });
-          continue;
-        }
-      } catch (e) {
-        AppLogger.error('execute: $e');
-        respuesta = 'Ocurrió un error. Intenta de nuevo.';
-      }
-
-      if (!mounted) break;
-      setState(() {
-        _busy       = false;
-        _lastBot    = respuesta;
-        _statusText = '🔊 Hablando…';
-      });
-
+      await _processAndRespond(texto);
       if (_showHistory) _cargarHistorial();
-
-      try {
-        await _voice.speak(respuesta);
-      } catch (e) {
-        AppLogger.error('speak: $e');
-      }
-      _syncVoiceState();
-
-      if (mounted) await Future.delayed(const Duration(milliseconds: 200));
     }
 
     _looping = false;
@@ -500,8 +481,8 @@ class _HomeScreenState extends State<HomeScreen>
                     if (_voice.speaking) {
                       _voice.stopSpeaking();
                       _syncVoiceState();
-                    } else if (kIsWeb) {
-                      _webListenOnce();
+                    } else if (kIsWeb && !_looping) {
+                      _webStart();
                     } else if (!_looping) {
                       _loop();
                     }
