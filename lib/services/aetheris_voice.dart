@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:web/web.dart' as web;
 import 'voice_loader_stub.dart'
     if (dart.library.js_interop) 'voice_loader_web.dart';
 import '../utils/logger.dart';
@@ -240,23 +242,72 @@ class AetherisVoice {
 class _WebAetherisVoice extends AetherisVoice {
   _WebAetherisVoice() : super._();
 
+  final stt.SpeechToText _webStt = stt.SpeechToText();
+  final _utterance = web.SpeechSynthesisUtterance();
+  web.SpeechSynthesis? get _synth => web.window.speechSynthesis;
+  bool _webSttReady = false;
+
   @override
-  bool get sttReady => false;
+  bool get sttReady => _webSttReady;
 
   @override
   Future<void> init() async {
-    AppLogger.info('=== VOICE SKIPPED (web) ===');
+    AppLogger.info('=== WEB VOICE INIT ===');
+    try {
+      _webSttReady = await _webStt.initialize(
+        onError: (e) => AppLogger.error('WebSTT error: ${e.errorMsg}'),
+        onStatus: (s) => AppLogger.info('WebSTT status: $s'),
+        debugLogging: false,
+      );
+    } catch (e) {
+      AppLogger.error('WebSTT init: $e');
+    }
+    _utterance.lang = 'es-MX';
+    _utterance.rate = 0.92;
+    _utterance.pitch = 0.78;
+    AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
   }
 
   @override
-  Future<void> speak(String text) async {}
+  Future<void> speak(String text) async {
+    if (text.isEmpty || _synth == null) return;
+    _state = VoiceState.speaking;
+    final completer = Completer<void>();
+    _utterance.text = text;
+    _utterance.onend = (() => completer.complete()).toJS;
+    _synth!.speak(_utterance);
+    await completer.future;
+    _state = VoiceState.idle;
+  }
 
   @override
-  Future<void> stopSpeaking() async {}
+  Future<void> stopSpeaking() async {
+    _synth?.cancel();
+    _state = VoiceState.idle;
+  }
 
   @override
-  Future<String> listenOnce() async => '';
+  Future<String> listenOnce() async {
+    if (!_webSttReady) return '';
+    try {
+      return await _webStt.listen(
+        onResult: (r) => _lastResult = r.recognizedWords,
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.confirmation,
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(milliseconds: 800),
+          partialResults: true,
+        ),
+      );
+    } catch (e) {
+      AppLogger.error('WebSTT listen: $e');
+      return '';
+    }
+  }
 
   @override
-  void stop() {}
+  void stop() {
+    _synth?.cancel();
+    try { _webStt.stop(); } catch (_) {}
+  }
 }
