@@ -327,7 +327,7 @@ class _WebAetherisVoice extends AetherisVoice {
     if (text.isEmpty || _synth == null) return;
     _state = VoiceState.speaking;
     final completer = Completer<void>();
-    _utterance.text = text;
+    _utterance.text = _normalizeText(text);
     _utterance.onend = (() {
       if (!completer.isCompleted) completer.complete();
     }).toJS;
