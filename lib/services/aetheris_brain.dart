@@ -254,8 +254,14 @@ notaste, pero mantente atento a réplicas.
     List<Map<String, dynamic>> messages,
   ) async {
     try {
+      const proxyEnv = String.fromEnvironment('WEATHER_CORS_PROXY');
+      final base = proxyEnv.isNotEmpty
+          ? '${proxyEnv.endsWith('/') ? proxyEnv : '$proxyEnv/'}'
+             'https://openrouter.ai/api/v1/chat/completions'
+          : 'https://openrouter.ai/api/v1/chat/completions';
+
       final resp = await http.post(
-        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+        Uri.parse(base),
         headers: {
           'Authorization': 'Bearer $key',
           'Content-Type': 'application/json',

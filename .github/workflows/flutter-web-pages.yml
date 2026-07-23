@@ -23,6 +23,7 @@ jobs:
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY || '' }}
+      WEATHER_CORS_PROXY: ${{ secrets.WEATHER_CORS_PROXY || '' }}
     steps:
       - name: Print environment summary
         shell: bash
@@ -86,6 +87,7 @@ jobs:
           --dart-define=FLUTTER_WEB_USE_SKIA=true
           --dart-define=OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
           --dart-define=OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+          --dart-define=WEATHER_CORS_PROXY=${WEATHER_CORS_PROXY}
 
       - name: Inspect build/web
         shell: bash
