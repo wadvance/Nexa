@@ -25,9 +25,6 @@ class _HomeScreenState extends State<HomeScreen>
   bool   _started    = false;
   bool   _looping    = false;
   bool   _muted      = false;
-  String _lastUser   = '';
-  String _lastBot    = '';
-  String _statusText = 'Toca INICIAR para comenzar';
 
   // Historial
   bool              _showHistory    = false;
@@ -80,16 +77,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _start() async {
     if (_started) return;
-    setState(() { _started = true; _statusText = 'Iniciando…'; });
+    setState(() { _started = true; });
     await Future.delayed(const Duration(milliseconds: 300));
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
     final mensaje = '$saludo. Soy AETHERIS. ¿En qué puedo ayudarte?';
-    setState(() { _statusText = 'Hablando…'; _lastBot = mensaje; });
     await _voice.speak(mensaje);
-    _syncVoiceState();
+      _syncVoiceState();
     if (kIsWeb) {
-      setState(() => _statusText = 'Toca el círculo para empezar');
       _voiceState.value = VoiceState.idle;
     } else if (mounted) {
       _loop();
@@ -100,20 +95,20 @@ class _HomeScreenState extends State<HomeScreen>
   /// Después de eso todo es manos libres (el STT queda escuchando).
   Future<void> _webStart() async {
     if (_busy || _voice.speaking || !_started) return;
-    setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
+    setState(() { _busy = true; });
     _syncVoiceState();
     try {
       await _voice.startContinuous();
       if (!mounted) return;
       if (!_voice.sttReady) {
-        setState(() { _busy = false; _statusText = '⚠ Micrófono no disponible'; });
+        setState(() { _busy = false; });
         return;
       }
       // Obtener el primer resultado (el usuario ya está hablando)
       final texto = await _voice.listenOnce();
       if (!mounted) return;
       if (texto.isEmpty) {
-        setState(() { _busy = false; _statusText = 'Toca el círculo para empezar'; });
+        setState(() { _busy = false; });
         return;
       }
       await _processAndRespond(texto);
@@ -121,25 +116,22 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) _loop();
     } catch (e, st) {
       AppLogger.error('_webStart: $e\n$st');
-      if (mounted) setState(() { _busy = false; _statusText = 'Error: toca de nuevo'; });
+      if (mounted) setState(() { _busy = false; });
     }
   }
 
   /// Procesa un texto y responde por voz.
   Future<void> _processAndRespond(String texto) async {
-    setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
     _syncVoiceState();
     try {
       final respuesta = await _commands.execute(texto, context, _uid);
-      _lastBot = respuesta;
       _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
-      setState(() => _statusText = respuesta);
       await _voice.speak(respuesta);
       _syncVoiceState();
     } catch (e) {
       AppLogger.error('_processAndRespond: $e');
-      if (mounted) setState(() => _statusText = 'Error al procesar');
+
     }
     if (mounted) { setState(() => _busy = false); _syncVoiceState(); }
   }
@@ -158,14 +150,10 @@ class _HomeScreenState extends State<HomeScreen>
       _syncVoiceState();
 
       if (!_voice.sttReady) {
-        if (mounted) {
-          setState(() => _statusText = '⚠ Micrófono no disponible. Verifica permisos.');
-        }
         await Future.delayed(const Duration(seconds: 2));
         continue;
       }
 
-      if (mounted) setState(() => _statusText = '🎤 Escuchando…');
       final listenFuture = _voice.listenOnce();
       _syncVoiceState();
 
@@ -509,9 +497,6 @@ class _HomeScreenState extends State<HomeScreen>
                             onTap: () async {
                               await _voice.stopSpeaking();
                               _syncVoiceState();
-                              if (mounted) {
-                                setState(() => _statusText = '🎤 Escuchando…');
-                              }
                             },
                             child: Container(
                               width: 64, height: 64,
@@ -539,7 +524,6 @@ class _HomeScreenState extends State<HomeScreen>
                       if (_muted) {
                         _voice.stop();
                         _syncVoiceState();
-                        setState(() => _statusText = '🔇 Pausado');
                       } else {
                         _loop();
                       }
