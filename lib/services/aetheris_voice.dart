@@ -268,8 +268,7 @@ class _WebAetherisVoice extends AetherisVoice {
     }
 
     _utterance.lang = 'es-MX';
-    _utterance.rate = 0.92;
-    _utterance.pitch = 0.78;
+    _utterance.rate = 1.05;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
   }
 
@@ -281,34 +280,39 @@ class _WebAetherisVoice extends AetherisVoice {
     if (list.isEmpty) return;
 
     final maleName = findMaleSpanishVoice();
+    final maleNameLower = maleName?.toLowerCase();
+    web.SpeechSynthesisVoice? latinMale;
+    web.SpeechSynthesisVoice? anyMale;
+    web.SpeechSynthesisVoice? latin;
     web.SpeechSynthesisVoice? fallback;
+
+    const latinLocales = ['es-mx', 'es-us', 'es-419', 'es-co', 'es-ar',
+                          'es-cl', 'es-pe', 'es-ve'];
 
     for (final v in list) {
       final name = v.name.toLowerCase();
       final lang = v.lang.toLowerCase();
-
       if (!lang.startsWith('es')) continue;
 
       fallback ??= v;
+      final isLatin = latinLocales.any((l) => lang.startsWith(l));
+      final isMale = name.contains('male') || name.contains('masculine');
 
-      if (maleName != null && name == maleName.toLowerCase()) {
+      if (isLatin) latin ??= v;
+      if (isLatin && isMale) latinMale ??= v;
+      if (isMale) anyMale ??= v;
+
+      if (maleNameLower != null && name == maleNameLower) {
         _utterance.voice = v;
-        AppLogger.info('WebTTS: ${v.name} (${v.lang})');
+        AppLogger.info('WebTTS exact: ${v.name} (${v.lang})');
         return;
-      }
-
-      if (maleName == null) {
-        if (name.contains('male') || name.contains('masculine')) {
-          _utterance.voice = v;
-          AppLogger.info('WebTTS male: ${v.name}');
-          return;
-        }
       }
     }
 
-    if (fallback != null) {
-      _utterance.voice = fallback;
-      AppLogger.info('WebTTS fallback: ${fallback.name}');
+    final selected = latinMale ?? latin ?? anyMale ?? fallback;
+    if (selected != null) {
+      _utterance.voice = selected;
+      AppLogger.info('WebTTS: ${selected.name} (${selected.lang})');
     }
   }
 
@@ -352,7 +356,7 @@ class _WebAetherisVoice extends AetherisVoice {
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
           listenFor: const Duration(seconds: 5),
-          pauseFor: const Duration(milliseconds: 600),
+          pauseFor: const Duration(milliseconds: 400),
           partialResults: true,
         ),
       );
