@@ -704,8 +704,10 @@ class VoiceCommands {
   /// Hora, fecha, cálculos, identidad, saludos compuestos, etc.
   bool _isLocalBrainQuestion(String q) {
     const localTriggers = [
-      'qué hora', 'que hora', 'hora es', 'hora actual', 'que horas son',
-      'dime la hora', 'me dices la hora', 'dame la hora',
+      'qué hora', 'que hora', 'hora es', 'la hora', 'hora actual',
+      'que horas son', 'dime la hora', 'me dices la hora', 'dame la hora',
+      'me das la hora', 'me puedes dar la hora', 'puedes decirme la hora',
+      'sabes la hora', 'qué horas', 'que horas',
       'qué día', 'que día', 'fecha', 'que fecha', 'qué fecha',
       'día de hoy', 'qué día es hoy', 'fecha de hoy', 'que día es',
       'eres', 'quien eres', 'quién eres', 'qué eres', 'que eres',

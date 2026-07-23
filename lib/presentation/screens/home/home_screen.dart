@@ -129,14 +129,21 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _processAndRespond(String texto) async {
     _syncVoiceState();
     try {
-      final respuesta = await _commands.execute(texto, context, _uid);
+      AppLogger.info('Process: "$texto"');
+      var respuesta = await _commands.execute(texto, context, _uid);
+      AppLogger.info('Reply: "${respuesta.substring(0, respuesta.length.clamp(0, 120))}"');
       _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
+      // Garantizar que SIEMPRE hable algo — si la IA devuelve vacío,
+      // dar una respuesta empática para que el usuario sepa que estoy aquí.
+      if (respuesta.trim().isEmpty) {
+        respuesta = 'No te escuché bien. ¿Podrías repetirlo?';
+      }
       await _voice.speak(respuesta);
       _syncVoiceState();
-    } catch (e) {
-      AppLogger.error('_processAndRespond: $e');
-
+    } catch (e, st) {
+      AppLogger.error('_processAndRespond: $e\n$st');
+      try { await _voice.speak('Lo siento, tuve un problema. ¿Repites?'); } catch (_) {}
     }
     if (mounted) { setState(() => _busy = false); _syncVoiceState(); }
   }
