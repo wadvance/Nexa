@@ -242,17 +242,34 @@ class AetherisVoice {
   }
 }
 
+@JS('webkitSpeechRecognition')
+extension type _WebSpeechRecognizer._(JSObject _) implements JSObject {
+  external factory _WebSpeechRecognizer();
+  external void start();
+  external void stop();
+  external void abort();
+  external set continuous(bool v);
+  external set interimResults(bool v);
+  external set lang(String v);
+  external set onresult(JSFunction? v);
+  external set onerror(JSFunction? v);
+  external set onend(JSFunction? v);
+}
+
 class _WebAetherisVoice extends AetherisVoice {
   _WebAetherisVoice() : super._();
 
-  final stt.SpeechToText _webStt = stt.SpeechToText();
   final _utterance = web.SpeechSynthesisUtterance();
   web.SpeechSynthesis? get _synth => web.window.speechSynthesis;
+
+  // ── Reconocimiento de voz nativo web (webkitSpeechRecognition) ─────────
+
+  _WebSpeechRecognizer? _webSpeech;
   bool _webSttReady = false;
-  bool _webSttActive = false;                   // sesión continua iniciada
-  Completer<String>? _webNextResult;             // quien espera el próximo resultado
-  final List<String> _webPendingResults = [];    // resultados encolados mientras nadie espera
-  Timer? _webSttTimeout;                        // timeout de inactividad
+  bool _webSttActive = false;
+  Completer<String>? _webNextResult;
+  final List<String> _webPendingResults = [];
+  Timer? _stabilityTimer;
 
   @override
   bool get sttReady => _webSttReady;
@@ -264,14 +281,44 @@ class _WebAetherisVoice extends AetherisVoice {
     await waitForVoices();
     _selectVoice();
 
+    // Inicializar SpeechRecognition del navegador (webkitSpeechRecognition)
     try {
-      _webSttReady = await _webStt.initialize(
-        onError: (e) => AppLogger.error('WebSTT error: ${e.errorMsg}'),
-        onStatus: (s) => AppLogger.info('WebSTT status: $s'),
-        debugLogging: false,
-      );
+      _webSpeech = _WebSpeechRecognizer();
+      _webSpeech!.continuous = true;
+      _webSpeech!.interimResults = true;
+      _webSpeech!.lang = 'es-MX';
+
+      _webSpeech!.onresult = ((web.Event e) {
+        final se = e as web.SpeechRecognitionEvent;
+        final results = se.results;
+        if (results.length == 0) return;
+        final last = results.item(results.length - 1);
+        final transcript = last.item(0).transcript.trim();
+        if (transcript.isEmpty) return;
+        AppLogger.info('WebSpeech: "$transcript"');
+
+        _stabilityTimer?.cancel();
+        _stabilityTimer = Timer(const Duration(milliseconds: 800), () {
+          if (_webNextResult != null) {
+            _webNextResult!.complete(transcript);
+            _webNextResult = null;
+          } else {
+            _webPendingResults.add(transcript);
+          }
+        });
+      }).toJS;
+
+      _webSpeech!.onerror = ((web.Event e) {
+        AppLogger.warn('WebSpeech error: $e');
+      }).toJS;
+
+      _webSpeech!.onend = ((web.Event e) {
+        AppLogger.info('WebSpeech onend');
+      }).toJS;
+
+      _webSttReady = true;
     } catch (e) {
-      AppLogger.error('WebSTT init: $e');
+      AppLogger.warn('WebSpeech no disponible: $e');
     }
 
     _utterance.lang = 'es-MX';
@@ -345,88 +392,46 @@ class _WebAetherisVoice extends AetherisVoice {
     _state = VoiceState.idle;
   }
 
-  /// Inicia la escucha continua (una sola llamada a `listen()` por sesión).
   @override
   Future<void> startContinuous() async {
-    if (_webSttActive || !_webSttReady) return;
+    if (_webSttActive || !_webSttReady || _webSpeech == null) return;
     _webSttActive = true;
-    AppLogger.info('WebSTT: starting continuous session');
+    AppLogger.info('WebSpeech: starting continuous');
 
-    // Reiniciar cola
     _webPendingResults.clear();
     _webNextResult?.complete('');
     _webNextResult = null;
-
-    Timer? partialTimer;
-
-    void deliver(String text) {
-      partialTimer?.cancel();
-      partialTimer = null;
-      if (_webNextResult != null) {
-        _webNextResult!.complete(text);
-        _webNextResult = null;
-      } else {
-        _webPendingResults.add(text);
-      }
-    }
+    _stabilityTimer?.cancel();
 
     try {
-      await _webStt.listen(
-        onResult: (r) {
-          final words = r.recognizedWords.trim();
-          AppLogger.info('WebSTT partial: "$words" final=${r.finalResult}');
-
-          if (r.finalResult && words.isNotEmpty) {
-            deliver(words);
-            return;
-          }
-
-          if (words.isNotEmpty) {
-            partialTimer?.cancel();
-            partialTimer = Timer(const Duration(milliseconds: 800), () {
-              AppLogger.info('WebSTT stable partial: $words');
-              deliver(words);
-            });
-          }
-        },
-        listenOptions: stt.SpeechListenOptions(
-          listenMode: stt.ListenMode.confirmation,
-          listenFor: const Duration(seconds: 10),
-          pauseFor: const Duration(milliseconds: 500),
-          partialResults: true,
-        ),
-      );
+      _webSpeech!.start();
     } catch (e) {
-      AppLogger.error('WebSTT startContinuous: $e');
+      AppLogger.error('WebSpeech start: $e');
       _webSttActive = false;
       _state = VoiceState.idle;
     }
   }
 
-  /// Detiene la sesión continua.
   @override
   void stopContinuous() {
     _webSttActive = false;
-    _webSttTimeout?.cancel();
-    _webSttTimeout = null;
-    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
+    _stabilityTimer?.cancel();
     _webNextResult?.complete('');
     _webNextResult = null;
+    try { _webSpeech?.stop(); } catch (_) {}
   }
 
   @override
   Future<String> listenOnce() async {
     if (!_webSttReady || !_webSttActive) return '';
-    // Si hay resultados encolados, devolver el siguiente
     if (_webPendingResults.isNotEmpty) {
       return _webPendingResults.removeAt(0);
     }
-    // Esperar el próximo resultado
     _state = VoiceState.listening;
     _webNextResult = Completer<String>();
     try {
       return await _webNextResult!.future.timeout(
-        const Duration(seconds: 12),
+        const Duration(seconds: 30),
         onTimeout: () => '',
       );
     } finally {
