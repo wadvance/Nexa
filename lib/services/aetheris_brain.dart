@@ -1,7 +1,7 @@
-import 'dart:developer' as dev;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import '../utils/logger.dart';
 import 'conversation_memory_service.dart';
 import 'knowledge_domain_service.dart';
 import 'tool_registry.dart';
@@ -124,9 +124,10 @@ notaste, pero mantente atento a réplicas.
   ) async {
     final key = _readKey();
     if (key == null) {
-      dev.log('AetherisBrain: OPENROUTER_API_KEY no encontrada en .env');
+      AppLogger.error('OPENROUTER_API_KEY no encontrada');
       return _localFallback(question);
     }
+    AppLogger.info('API key OK (len=${key.length})');
 
     final toolsBlock = _toolsDescription();
     final userCtx    = await UserMemoryService.systemPromptContext();
@@ -147,7 +148,7 @@ notaste, pero mantente atento a réplicas.
       ...history.map((m) => {'role': m['role'], 'content': m['content']}),
     ];
 
-    dev.log('AetherisBrain.ReAct → "${_truncate(question)}"');
+    AppLogger.info('ReAct → "${_truncate(question)}"');
 
     String workingReply = '';
     for (int step = 0; step < maxReActSteps; step++) {
@@ -178,7 +179,7 @@ notaste, pero mantente atento a réplicas.
       workingReply = '${workingReply.isEmpty ? '' : '$workingReply\n'}'
           'AETHERIS: ${_truncate(reply)}\n'
           'Observation: ${_truncate(result.text)}';
-      dev.log('ReAct step $step → ${action.name} → ${result.ok}');
+      AppLogger.info('ReAct step $step → ${action.name} → ${result.ok}');
     }
 
     // Si tras N pasos sigue pidiendo acciones, entregamos la última traza
@@ -276,6 +277,7 @@ notaste, pero mantente atento a réplicas.
         }),
       ).timeout(const Duration(seconds: 18));
       if (resp.statusCode != 200) {
+        AppLogger.error('OpenRouter HTTP ${resp.statusCode}: ${resp.body}');
         if (resp.statusCode == 401 || resp.statusCode == 403) {
           return '';
         }
@@ -283,12 +285,15 @@ notaste, pero mantente atento a réplicas.
       }
       final data = json.decode(resp.body) as Map<String, dynamic>;
       final choices = data['choices'] as List?;
-      if (choices == null || choices.isEmpty) return '';
+      if (choices == null || choices.isEmpty) {
+        AppLogger.error('OpenRouter: sin choices en respuesta');
+        return '';
+      }
       return (choices.first as Map)['message']?['content']
               ?.toString().trim() ??
           '';
     } catch (e) {
-      dev.log('AetherisBrain.OpenRouter error: $e');
+      AppLogger.error('OpenRouter error: $e');
       return '';
     }
   }
