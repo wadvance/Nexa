@@ -127,8 +127,8 @@ class AetherisLocalBrain {
     }
 
     // Respuesta genérica empática (sin preguntar "sobre qué quieres hablar").
-    return 'Estoy funcionando con mi conocimiento local. Dime de qué tema '
-        'quieres hablar y te responderé con lo que sé.';
+    return 'Cuéntame un poco más. ¿Me das más detalles o el tema es '
+        'libre? Converso sobre cualquier cosa que tengas en mente.';
   }
 
   static bool _any(String q, List<String> keys) =>

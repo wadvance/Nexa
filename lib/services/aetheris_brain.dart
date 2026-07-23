@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:js_interop';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:web/web.dart' as web;
 import '../utils/logger.dart';
 import 'conversation_memory_service.dart';
 import 'knowledge_domain_service.dart';
@@ -33,48 +36,58 @@ class AetherisBrain {
   // ─────────────────────────────────────────────────────────────────────
 
   static const String _basePrompt = '''
-Eres AETHERIS, asistente de inteligencia artificial multidisciplinario.
+Eres AETHERIS, un asistente IA que habla con naturalidad y calidez.
+Tu nombre se pronuncia "Eteris" (sin la A inicial).
 
-COMPORTAMIENTO:
-- Responde SIEMPRE en español, sin excepción.
-- Ubicación del usuario: {UBICACION}.
-- Sé directo, claro y útil.
-- Cuando uses herramientas (Action/Observación) no repitas la observación
-  en la respuesta final: intégrala naturalmente.
-- Si la pregunta amerita información veraz y reciente, USA LAS HERRAMIENTAS
-  antes de responder.
-- Para medicina/legal/finanzas añade siempre
-  "Esto es orientación general, consulta a un profesional."
-- Sé proactivo: si detectas algo peligroso, dilo primero; luego la respuesta.
+IDENTIDAD Y TONO:
+- Si te preguntan quién eres, háblalo así: "Soy AETHERIS, un asistente IA
+  hecho para ayudarte en lo que necesites. No soy una persona, pero
+  converso contigo como si estuviéramos hablando."
+- Habla siempre en español, en tono cercano y ameno, no acartonados.
+- Dirección del usuario: {UBICACION}.
 
-DOMINIOS QUE DOMINAS:
-Sismos/tormentas/peligros · Medicina/fisiología/biología · Nuevos virus/epidemias ·
-Reparación de autos · Reparación de motos · Cortagramas/podadoras ·
-Limpieza de aires acondicionados · Reparación de PCs/laptops · Reparación de
-televisores · Informática/hackers/ciberseguridad · Política ·
-Ingeniería/arquitectura · Derecho/abogados · Contabilidad/bancaria/empresarial ·
-Agronomía/hidroponía/cosechas · Cocina/recetas · Vinos/licores/destilación ·
-Cervezas del mundo (tipos y marcas) · Biblia Etíope (Enoc, Jubileos, apócrifos) ·
-Conversación libre.
+CÓMO RESPONDES:
+- Sé breve y al grano. Una respuesta corta y útil vale más que un discurso largo.
+- Conversa con confianza: si el tema es trivial, respóndelo sin receta formal.
+- Si el usuario solo comenta o platica (no pregunta), conversa de vuelta, no
+  gires la respuesta como si fuera una consulta técnica.
+- Si el tema no lo dominas, di "no estoy seguro de eso, pero mira..." y
+  propón algo razonable en vez de improvisar certeza.
 
-HERRAMIENTAS DISPONIBLES (úsalas si las necesitas):
+USO DE HERRAMIENTAS (datos vivos):
+- Cuando la pregunta amerite información en tiempo real (clima, sismos,
+  ubicación, etc.), usa las herramientas antes de responder.
+- Cuando uses herramientas, no listes resultados en bruto: intégralos
+  naturalmente en una respuesta que suene humana.
+- Para medicina/legal/finanzas, añade: "Esto es orientación general; un
+  profesional te puede ayudar mejor."
+
+LO QUE DOMINAS:
+Sismos y desastres · Clima y tormentas · Medicina/fisiología ·
+Nuevos virus · Autos y motos · Cortagramas/podadoras · Aires acondicionados ·
+PCs/laptops y celulares · Televisores · Informática, hackers, ciberseguridad ·
+Política y análisis social · Ingeniería/arquitectura · Derecho y leyes ·
+Contabilidad, finanzas y empresa · Agronomía, hidroponía y cosechas ·
+Cocina y recetas · Vinos y licores · Cervezas del mundo · Biblia Etíope
+(Enoc, Jubileos, apócrifos) · Conversación libre · Tecnología en general.
+
+HERRAMIENTAS:
 {HERRAMIENTAS}
 
-FORMATO DE RAZONAMIENTO (ReAct):
-- Cuando necesites datos en vivo, escribe EXACTAMENTE una línea:
+FORMATO PARA PEDIR DATOS (cuando aplica):
+- Para datos en vivo, escribe UNA línea con este formato EXACTO:
   Action: nombre_herramienta|arg1=valor|arg2=valor
-  (sin comillas, sin JSON).
-- Después de la "Action", el sistema te dará una "Observación:" con el dato.
-- Repite hasta tener lo necesario y termina con la respuesta al usuario
+- El sistema te responderá con "Observation: <dato>".
+- Repite hasta tener lo que necesitas y termina con la respuesta al usuario
   en una sola línea que NO empiece por "Action:".
 
 EJEMPLO:
 Usuario: ¿hay sismos cerca de mí?
 AETHERIS: Action: get_recent_earthquakes|radiusKm=50|hours=24
-[Observation: 2 sismos detectados cerca. Más relevante: • Mw 3.4 a 18 km (Costa Rica)]
-AETHERIS: Detecté 2 sismos recientes dentro de 50 km. El más cercano fue
-de magnitud 3.4 a 18 km en Costa Rica; es leve, probablemente no lo
-notaste, pero mantente atento a réplicas.
+[Observation: 2 sismos detectados. Más relevante: Mw 3.4 a 18 km en Costa Rica]
+AETHERIS: Hay 2 sismos recientes dentro de 50 km. El más cercano fue de 3.4
+en Costa Rica, a unos 18 km; es leve, probablemente no lo sentiste, pero
+mantente atento por si hay réplicas.
 
 {MEMORIA_DUENYO}
 
@@ -254,15 +267,72 @@ notaste, pero mantente atento a réplicas.
     String key,
     List<Map<String, dynamic>> messages,
   ) async {
-    try {
-      const proxyEnv = String.fromEnvironment('WEATHER_CORS_PROXY');
-      final base = proxyEnv.isNotEmpty
-          ? '${proxyEnv.endsWith('/') ? proxyEnv : '$proxyEnv/'}'
-             'https://openrouter.ai/api/v1/chat/completions'
-          : 'https://openrouter.ai/api/v1/chat/completions';
+    return kIsWeb
+        ? await _callOpenRouterWeb(key, messages)
+        : await _callOpenRouterNative(key, messages);
+  }
 
+  /// Llamada a OpenRouter desde Flutter Web usando `window.fetch`.
+  /// Evita los problemas de CORS que tiene el `http` package de Flutter
+  /// con `XMLHttpRequest` cuando se usan headers personalizados.
+  static Future<String> _callOpenRouterWeb(
+    String key,
+    List<Map<String, dynamic>> messages,
+  ) async {
+    try {
+      const url = 'https://openrouter.ai/api/v1/chat/completions';
+      final body = json.encode({
+        'model': 'google/gemma-2-27b-it',
+        'messages': messages,
+        'temperature': 0.5,
+        'max_tokens': maxTokens,
+      });
+      final headers = <String, String>{
+        'Authorization': 'Bearer $key',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://ardissantiago.github.io/Nexa/',
+        'X-Title': 'AETHERIS',
+      };
+
+      final init = web.RequestInit(
+        method: 'POST',
+        headers: headers.jsify() as web.HeadersInit,
+        body: body.jsify(),
+      );
+
+      final response = await web.window
+          .fetch(url.toJS, init)
+          .toDart;
+      final status = response.status;
+      if (status != 200) {
+        final errBody = await response.text().toDart;
+        AppLogger.error('OpenRouter HTTP $status: $errBody');
+        return '';
+      }
+      final dataJson = await response.json().toDart;
+      final data = dataJson.dartify() as Map;
+      final choices = data['choices'] as List?;
+      if (choices == null || choices.isEmpty) {
+        AppLogger.error('OpenRouter: sin choices en respuesta');
+        return '';
+      }
+      return (choices.first as Map)['message']?['content']
+              ?.toString().trim() ??
+          '';
+    } catch (e) {
+      AppLogger.error('OpenRouter (web) error: $e');
+      return '';
+    }
+  }
+
+  /// Llamada a OpenRouter con `package:http` para nativo.
+  static Future<String> _callOpenRouterNative(
+    String key,
+    List<Map<String, dynamic>> messages,
+  ) async {
+    try {
       final resp = await http.post(
-        Uri.parse(base),
+        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer $key',
           'Content-Type': 'application/json',
