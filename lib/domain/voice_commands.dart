@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:web/web.dart' as web;
@@ -267,7 +268,11 @@ class VoiceCommands {
     // ── 14. Sesión ────────────────────────────────────────────────────────
     if (_any(cmd, ['cerrar sesión', 'salir', 'desconectar'])) {
       OwnerGuardService.lockOwnerSession();
-      await FirebaseAuth.instance.signOut();
+      if (!kIsWeb) {
+        try {
+          await FirebaseAuth.instance.signOut();
+        } catch (_) {}
+      }
       return 'Sesión cerrada. Hasta luego.';
     }
 

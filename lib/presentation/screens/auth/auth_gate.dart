@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../home/home_screen.dart';
@@ -11,12 +12,16 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  bool _loading = true;
+  bool _loading = !kIsWeb;
   StreamSubscription<User?>? _authSub;
 
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) {
+      _loading = false;
+      return;
+    }
     _init();
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null && mounted) setState(() => _loading = false);

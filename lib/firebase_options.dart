@@ -9,9 +9,10 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DefaultFirebaseOptions {
-  // Clave leída en runtime desde .env (no const — dotenv es runtime).
+  // Clave: primero .env (nativo), luego --dart-define (web/CI), luego vacío.
   static String get _apiKey =>
-      dotenv.env['FIREBASE_API_KEY'] ?? '';
+      dotenv.env['FIREBASE_API_KEY'] ??
+      const String.fromEnvironment('FIREBASE_API_KEY');
 
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) return web;

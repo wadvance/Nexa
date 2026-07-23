@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../services/aetheris_voice.dart';
@@ -221,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  String get _uid => FirebaseAuth.instance.currentUser?.uid ?? 'demo_user_001';
+  String get _uid => kIsWeb ? 'web_anon' : (FirebaseAuth.instance.currentUser?.uid ?? 'demo_user_001');
 
   bool _isStopWord(String t) {
     final q = t.toLowerCase().trim();
