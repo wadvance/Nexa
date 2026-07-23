@@ -277,11 +277,11 @@ class _WebAetherisVoice extends AetherisVoice {
     final synth = _synth;
     if (synth == null) return;
     final voices = synth.getVoices();
-    if (voices.isEmpty) return;
+    final list = voices.toDart;
 
     final maleName = findMaleSpanishVoice();
     if (maleName != null) {
-      for (final v in voices) {
+      for (final v in list) {
         if (v.name == maleName) {
           _utterance.voice = v;
           AppLogger.info('WebTTS voice: ${v.name}');
@@ -290,7 +290,7 @@ class _WebAetherisVoice extends AetherisVoice {
       }
     }
 
-    for (final v in voices) {
+    for (final v in list) {
       if (v.lang.toLowerCase().startsWith('es')) {
         _utterance.voice = v;
         AppLogger.info('WebTTS fallback: ${v.name}');
