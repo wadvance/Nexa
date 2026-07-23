@@ -65,7 +65,89 @@ class TeachingParser {
       return (handled: true, reply: 'Listo. He borrado mi memoria local.');
     }
 
+    // ── 5) "¿Qué has aprendido?" / "recuérdame lo que sabes" ─────────────
+    final recallPhrases = <String>{
+      'qué has aprendido', 'que has aprendido',
+      'qué sabes de mí', 'que sabes de mi',
+      'qué sabes sobre mí', 'que sabes sobre mi',
+      'qué recuerdas', 'que recuerdas',
+      'qué recuerdas de mí', 'que recuerdas de mi',
+      'recuérdame lo que sabes', 'recuerdame lo que sabes',
+      'lista lo aprendido',
+      'muéstrame tu memoria', 'muestrame tu memoria',
+      'dime lo que sabes',
+      'qué has memorizado', 'que has memorizado',
+      'resumen de tu memoria', 'resumen de memoria',
+    };
+    final isRecall = recallPhrases.contains(lower) ||
+        recallPhrases.any((p) => lower.startsWith('$p ') || lower == p);
+    if (isRecall) {
+      final reply = await _buildMemoryDigest();
+      return (handled: true, reply: reply);
+    }
+
+    // ── 6) "Olvida el ejemplo N" / "olvida el hecho X" ────────────────────
+    final forgetEx = RegExp(
+      r'^(?:olvida|borra)\s+(?:el\s+)?ejemplo\s+(\d+)$',
+      caseSensitive: false,
+    );
+    final fm = forgetEx.firstMatch(t);
+    if (fm != null) {
+      final idx = int.tryParse(fm.group(1)!);
+      if (idx != null) {
+        final all = await UserMemoryService.allExamples();
+        if (idx >= 1 && idx <= all.length) {
+          await UserMemoryService.removeExampleAt(idx - 1);
+          return (
+            handled: true,
+            reply: 'Borrado el ejemplo $idx '
+                '("${all[idx-1]['trigger']}" → "${all[idx-1]['response']}").'
+          );
+        }
+        return (handled: true,
+            reply: 'Solo tengo ${all.length} ejemplo(s). Di "olvida el ejemplo N" con N entre 1 y ${all.length}.');
+      }
+    }
+
     return (handled: false, reply: '');
+  }
+
+  static Future<String> _buildMemoryDigest() async {
+    final facts = await UserMemoryService.allFacts();
+    final top   = await UserMemoryService.topTopics(max: 3);
+    final ex    = await UserMemoryService.allExamples();
+    final n     = await UserMemoryService.interactionCount();
+
+    final buf = StringBuffer();
+    if (facts.isEmpty && top.isEmpty && ex.isEmpty && n == 0) {
+      return 'Aún no he aprendido nada sobre ti. '
+          'Dime tu nombre, enséñame alguna preferencia o comparte un hecho.';
+    }
+
+    buf.write('Llevo $n conversacion${n == 1 ? '' : 'es'} contigo. ');
+
+    if (facts.isNotEmpty) {
+      buf.write('De ti sé que: ');
+      final list = facts.entries.take(4).map((e) =>
+        e.key == 'nombre' ? 'te llamas ${e.value}' :
+        'tu ${e.key} es ${e.value}'
+      ).toList();
+      buf.write('${list.join('; ')}.');
+    }
+    if (top.isNotEmpty) {
+      final t = top.map((e) => e.key).join(', ');
+      buf.writeln('Tus temas favoritos: $t.');
+    }
+    if (ex.isNotEmpty) {
+      buf.writeln('Tienes ${ex.length} ejemplo(s) guardado(s):');
+      for (var i = 0; i < ex.length && i < 4; i++) {
+        final e = ex[i];
+        buf.writeln(' ${i + 1}) Cuando digas "${e['trigger']}", '
+            'respondo "${e['response']}".');
+      }
+      if (ex.length > 4) buf.writeln(' … y ${ex.length - 4} más.');
+    }
+    return buf.toString().trim();
   }
 
   /// Intenta extraer (trigger, response) del texto tipo "cuando X, Y".
