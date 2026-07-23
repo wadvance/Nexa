@@ -57,10 +57,14 @@ jobs:
         shell: bash
         run: flutter pub get
 
-      - name: Create .env
+      - name: Create .env (root + assets/) from secrets
         shell: bash
         run: |
           cat > .env <<EOF
+          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+          EOF
+          cat > assets/.env <<EOF
           OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
           OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
           EOF
@@ -68,7 +72,8 @@ jobs:
             echo "FATAL: OPENROUTER_API_KEY secret empty"
             exit 1
           fi
-          echo ".env created"
+          echo ".env and assets/.env created"
+          ls -la .env assets/.env
 
       - name: Build web
         shell: bash

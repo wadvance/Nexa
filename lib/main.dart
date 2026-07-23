@@ -14,10 +14,12 @@ import 'presentation/screens/voice_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Cargar .env solo en plataformas donde existe (móvil/desktop, NO web).
+  // En web, las claves vienen vía --dart-define y dotenv.load fallará silencioso.
   try {
     await dotenv.load(fileName: ".env").timeout(const Duration(seconds: 5));
   } catch (e) {
-    dev.log('dotenv load error: $e');
+    dev.log('dotenv load skipped (using --dart-define on web): $e');
   }
   try {
     await Firebase.initializeApp(
