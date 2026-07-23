@@ -6,28 +6,39 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 
 class WeatherService {
-  static String get _apiKey =>
-      dotenv.env['OPENWEATHERMAP_API_KEY'] ?? '';
+  static String get _apiKey {
+    final de = dotenv.env['OPENWEATHERMAP_API_KEY'];
+    if (de != null && de.isNotEmpty) return de;
+    return const String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+  }
+
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
+  /// Proxy CORS para entornos web (GitHub Pages).
+  /// Se configura via --dart-define=WEATHER_CORS_PROXY=<url>.
+  static String? get _corsProxy {
+    const v = String.fromEnvironment('WEATHER_CORS_PROXY');
+    if (v.isNotEmpty) return v.endsWith('/') ? v : '$v/';
+    return kIsWeb ? 'https://corsproxy.io/?' : null;
+  }
+
   static void _log(String msg) {
-    // ignore: avoid_print
     dev.log('WeatherService: $msg', name: 'WeatherService');
   }
 
   static Future<Map<String, dynamic>?> _makeRequest(String url) async {
     try {
-      _log('GET $url');
-      final response = await http.get(Uri.parse(url)).timeout(
+      final target = _corsProxy != null ? '$_corsProxy$url' : url;
+      _log('GET $target');
+      final response = await http.get(Uri.parse(target)).timeout(
         const Duration(seconds: 10),
       );
 
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
-      } else {
-        _log('HTTP ${response.statusCode} - ${response.body}');
-        return null;
       }
+      _log('HTTP ${response.statusCode}');
+      return null;
     } catch (e) {
       _log('error: $e');
       return null;

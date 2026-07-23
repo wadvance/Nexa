@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -16,6 +17,13 @@ class RealTimeHazardService {
     final de = dotenv.env['OPENWEATHERMAP_API_KEY'];
     if (de != null && de.isNotEmpty) return de;
     return const String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+  }
+
+  /// Proxy CORS para entornos web (GitHub Pages).
+  static String? get _corsProxy {
+    const v = String.fromEnvironment('WEATHER_CORS_PROXY');
+    if (v.isNotEmpty) return v.endsWith('/') ? v : '$v/';
+    return kIsWeb ? 'https://corsproxy.io/?' : null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -89,21 +97,25 @@ class RealTimeHazardService {
     required double lon,
   }) async {
     try {
+      String wrap(String raw) => _corsProxy != null ? '$_corsProxy$raw' : raw;
+
       // OneCall 3.0 (o 2.5 si 3.0 no está activo)
-      final uri = Uri.parse(
-        'https://api.openweathermap.org/data/3.0/onecall'
-        '?lat=$lat&lon=$lon&appid=$_owmKey&units=metric&lang=es'
-        '&exclude=minutely,hourly,daily',
-      );
-      var resp = await http.get(uri).timeout(const Duration(seconds: 10));
+      var resp = await http.get(
+        Uri.parse(wrap(
+          'https://api.openweathermap.org/data/3.0/onecall'
+          '?lat=$lat&lon=$lon&appid=$_owmKey&units=metric&lang=es'
+          '&exclude=minutely,hourly,daily',
+        )),
+      ).timeout(const Duration(seconds: 10));
 
       // Fallback a 2.5
       if (resp.statusCode != 200) {
-        final uri25 = Uri.parse(
-          'https://api.openweathermap.org/data/2.5/weather'
-          '?lat=$lat&lon=$lon&appid=$_owmKey&units=metric&lang=es',
-        );
-        resp = await http.get(uri25).timeout(const Duration(seconds: 10));
+        resp = await http.get(
+          Uri.parse(wrap(
+            'https://api.openweathermap.org/data/2.5/weather'
+            '?lat=$lat&lon=$lon&appid=$_owmKey&units=metric&lang=es',
+          )),
+        ).timeout(const Duration(seconds: 10));
         if (resp.statusCode != 200) return null;
         final d = jsonDecode(resp.body) as Map<String, dynamic>;
         return WeatherSnapshot.fromSimple(d);
