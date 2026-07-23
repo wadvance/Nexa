@@ -34,19 +34,12 @@ class _HomeScreenState extends State<HomeScreen>
   List<ChatMessage> _chatHistory    = [];
   bool              _historyLoading = false;
 
-  // ValueNotifiers para que los widgets del orb se reconstruyan
-  // sólo cuando cambia el estado de voz, sin necesidad de Timer.
   final ValueNotifier<VoiceState> _voiceState =
       ValueNotifier(VoiceState.idle);
 
-  // Notifier para el warning de voz no autorizada
   final ValueNotifier<bool> _unauthorizedWarning = ValueNotifier(false);
 
   late AnimationController _pulse;
-
-  // Web: entrada de texto cuando el micrófono no está disponible
-  final TextEditingController _webInputCtrl = TextEditingController();
-  final FocusNode _webInputFocus = FocusNode();
 
   @override
   void initState() {
@@ -62,8 +55,6 @@ class _HomeScreenState extends State<HomeScreen>
     _pulse.dispose();
     _voiceState.dispose();
     _unauthorizedWarning.dispose();
-    _webInputCtrl.dispose();
-    _webInputFocus.dispose();
     _voice.stop();
     super.dispose();
   }
@@ -98,32 +89,39 @@ class _HomeScreenState extends State<HomeScreen>
     await _voice.speak(mensaje);
     _syncVoiceState();
     if (kIsWeb) {
-      setState(() => _statusText = 'Escribe tu mensaje…');
+      setState(() => _statusText = 'Toca el círculo para hablar');
       _voiceState.value = VoiceState.idle;
     } else if (mounted) {
       _loop();
     }
   }
 
-  Future<void> _onWebSend() async {
-    final txt = _webInputCtrl.text.trim();
-    if (txt.isEmpty || _busy) return;
-    _webInputCtrl.clear();
-    setState(() { _busy = true; _lastUser = txt; _statusText = '⏳ Procesando…'; });
+  Future<void> _webListenOnce() async {
+    if (_busy || _voice.speaking || !_started) return;
+    if (!_voice.sttReady) {
+      setState(() => _statusText = '⚠ Micrófono no disponible');
+      return;
+    }
+    setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
+    _syncVoiceState();
+    final texto = await _voice.listenOnce();
+    _syncVoiceState();
+    if (!mounted) return;
+    if (texto.isEmpty) {
+      setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
+      return;
+    }
+    setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
     try {
-      final respuesta = await _commands.execute(txt, context, _uid);
+      final respuesta = await _commands.execute(texto, context, _uid);
       _lastBot = respuesta;
-      _chatHistory.add(ChatMessage(role: 'user', text: txt));
+      _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
-      setState(() { _busy = false; _statusText = respuesta; });
       await _voice.speak(respuesta);
     } catch (e) {
-      setState(() { _busy = false; _statusText = 'Error: $e'; });
+      AppLogger.error('_webListenOnce: $e');
     }
-    if (mounted) {
-      setState(() => _statusText = 'Escribe tu mensaje…');
-      _webInputFocus.requestFocus();
-    }
+    setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
   }
 
   Future<void> _loop() async {
@@ -499,6 +497,8 @@ class _HomeScreenState extends State<HomeScreen>
                     if (_voice.speaking) {
                       _voice.stopSpeaking();
                       _syncVoiceState();
+                    } else if (kIsWeb) {
+                      _webListenOnce();
                     } else if (!_looping) {
                       _loop();
                     }
@@ -648,43 +648,6 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ),
 
-        if (kIsWeb && _started)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _webInputCtrl,
-                  focusNode: _webInputFocus,
-                  enabled: !_busy,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: _busy ? 'Procesando…' : 'Escribe aquí…',
-                    hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3)),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(22),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 12),
-                  ),
-                  onSubmitted: (_) => _onWebSend(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _busy ? null : _onWebSend,
-                icon: const Icon(Icons.send_rounded,
-                    color: Colors.deepPurpleAccent),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            ]),
-          ),
       ]),
     );
   }

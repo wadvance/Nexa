@@ -267,9 +267,9 @@ class _WebAetherisVoice extends AetherisVoice {
       AppLogger.error('WebSTT init: $e');
     }
 
-    _utterance.lang = 'es-CO';
-    _utterance.rate = 1.05;
-    _utterance.pitch = 0.5;
+    _utterance.lang = 'es-MX';
+    _utterance.rate = 1.08;
+    _utterance.pitch = 1.0;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
   }
 
@@ -280,15 +280,17 @@ class _WebAetherisVoice extends AetherisVoice {
     final list = voices.toDart;
     if (list.isEmpty) return;
 
-    final maleName = findMaleSpanishVoice();
-    final maleNameLower = maleName?.toLowerCase();
-    web.SpeechSynthesisVoice? latinMale;
-    web.SpeechSynthesisVoice? anyMale;
-    web.SpeechSynthesisVoice? latin;
+    web.SpeechSynthesisVoice? latinFemale;
+    web.SpeechSynthesisVoice? latinAny;
+    web.SpeechSynthesisVoice? esFemale;
     web.SpeechSynthesisVoice? fallback;
 
     const latinLocales = ['es-mx', 'es-us', 'es-419', 'es-co', 'es-ar',
                           'es-cl', 'es-pe', 'es-ve'];
+    const femaleHints = ['female', 'woman', 'mujer', 'femenina',
+                         'maria', 'sofia', 'elena', 'paula', 'carmen',
+                         'monica', 'laura', 'ana', 'valentina',
+                         'samantha', 'google', 'siri'];
 
     for (final v in list) {
       final name = v.name.toLowerCase();
@@ -297,20 +299,14 @@ class _WebAetherisVoice extends AetherisVoice {
 
       fallback ??= v;
       final isLatin = latinLocales.any((l) => lang.startsWith(l));
-      final isMale = name.contains('male') || name.contains('masculine');
+      final isFemale = femaleHints.any((h) => name.contains(h));
 
-      if (isLatin) latin ??= v;
-      if (isLatin && isMale) latinMale ??= v;
-      if (isMale) anyMale ??= v;
-
-      if (maleNameLower != null && name == maleNameLower) {
-        _utterance.voice = v;
-        AppLogger.info('WebTTS exact: ${v.name} (${v.lang})');
-        return;
-      }
+      if (isLatin && isFemale) latinFemale ??= v;
+      if (isLatin) latinAny ??= v;
+      if (isFemale && !isLatin) esFemale ??= v;
     }
 
-    final selected = latinMale ?? latin ?? anyMale ?? fallback;
+    final selected = latinFemale ?? latinAny ?? esFemale ?? fallback;
     if (selected != null) {
       _utterance.voice = selected;
       AppLogger.info('WebTTS: ${selected.name} (${selected.lang})');
