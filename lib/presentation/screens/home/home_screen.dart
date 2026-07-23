@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../services/aetheris_voice.dart';
 import '../../../domain/voice_commands.dart';
 import '../../../services/conversation_memory_service.dart';
+import '../../../services/location_service.dart';
 import '../../../services/voice_auth_service.dart';
 import '../../../utils/logger.dart';
 import '../owner_setup_screen.dart';
@@ -79,6 +80,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (_started) return;
     setState(() { _started = true; });
     await Future.delayed(const Duration(milliseconds: 300));
+    // Pido la ubicación AHORA (tras el primer gesto del usuario — evita
+    // el Uncaught Error de Edge/Firefox con Tracking Prevention).
+    // ignore: unawaited_futures
+    LocationService.requestNow();
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
     final mensaje = '$saludo. Soy AETHERIS. ¿En qué puedo ayudarte?';
