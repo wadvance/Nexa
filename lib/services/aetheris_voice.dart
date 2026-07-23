@@ -377,7 +377,14 @@ class _WebAetherisVoice extends AetherisVoice {
     if (wasActive) {
       _webSttActive = false;
       _stabilityTimer?.cancel();
-      try { _webSpeech?.stop(); } catch (_) {}
+      _webSpeech?.stop();
+      // Esperar onend antes de poder llamar start() de nuevo
+      final ended = Completer<void>();
+      _webSpeech!.onend = ((web.Event e) {
+        AppLogger.info('WebSpeech onend (speak stop)');
+        if (!ended.isCompleted) ended.complete();
+      }).toJS;
+      await ended.future.timeout(const Duration(seconds: 2), onTimeout: () {});
     }
     _state = VoiceState.speaking;
     final completer = Completer<void>();
@@ -391,7 +398,7 @@ class _WebAetherisVoice extends AetherisVoice {
     _synth!.speak(_utterance);
     await completer.future.timeout(const Duration(seconds: 15), onTimeout: () {});
     _state = VoiceState.idle;
-    // Reanudar STT
+    // Reanudar STT (onend ya ocurrió, start() no debería fallar)
     if (wasActive) {
       _webPendingResults.clear();
       _webNextResult?.complete('');

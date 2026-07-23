@@ -490,7 +490,12 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 4),
+                Text(
+                  speaking ? '🔊' : listening ? '🎤' : active ? '💭' : '',
+                  style: TextStyle(fontSize: 20, color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                const SizedBox(height: 12),
 
                 // ── CONTROLES ──────────────────────────────────────────
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
