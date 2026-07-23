@@ -372,6 +372,13 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   Future<void> speak(String text) async {
     if (text.isEmpty || _synth == null) return;
+    // Detener STT para evitar feedback (el micro capta lo que dice el parlante)
+    final wasActive = _webSttActive;
+    if (wasActive) {
+      _webSttActive = false;
+      _stabilityTimer?.cancel();
+      try { _webSpeech?.stop(); } catch (_) {}
+    }
     _state = VoiceState.speaking;
     final completer = Completer<void>();
     _utterance.text = _normalizeText(text);
@@ -384,6 +391,17 @@ class _WebAetherisVoice extends AetherisVoice {
     _synth!.speak(_utterance);
     await completer.future.timeout(const Duration(seconds: 15), onTimeout: () {});
     _state = VoiceState.idle;
+    // Reanudar STT
+    if (wasActive) {
+      _webPendingResults.clear();
+      _webNextResult?.complete('');
+      _webNextResult = null;
+      _webSttActive = true;
+      try { _webSpeech?.start(); } catch (e) {
+        AppLogger.error('WebSpeech restart: $e');
+        _webSttActive = false;
+      }
+    }
   }
 
   @override
