@@ -274,7 +274,7 @@ mantente atento por si hay réplicas.
         body: json.encode({
           'model': 'google/gemma-4-31b-it:free',
           'messages': messages,
-          'temperature': 0.5,
+          'temperature': 0.75,
           'max_tokens': maxTokens,
         }),
       ).timeout(const Duration(seconds: 18));

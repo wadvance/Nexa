@@ -337,8 +337,13 @@ class KnowledgeDomainService {
             'y su contexto histórico y religioso. Responde con rigor académico y respeto.';
 
       case KnowledgeDomain.general:
-        return 'Eres AETHERIS, asistente multidisciplinario experto en todos los campos del conocimiento. '
-            'Responde siempre en español con información precisa, útil y actualizada.';
+        return 'Estás conversando libremente con tu dueño. Aquí NO estás en modo técnico. '
+            'Conversa como un amigo curioso, cálido y con sentido del humor cuando encaje. '
+            'Cuando el tema sea abierto ("tema libre", "háblame de algo", "qué te parece..."), '
+            'elige YA un tema concreto para iniciar la charla: un dato curioso del mundo, '
+            'una anécdota, una pregunta provocadora, un mini-reto, algo para pensar — NO '
+            'devuelvas preguntas genéricas ni repitas la misma respuesta genérica de la '
+            'vez anterior. Sé concreto y variado cada vez.';
     }
   }
 
