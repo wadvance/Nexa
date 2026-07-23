@@ -253,6 +253,10 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   Future<void> init() async {
     AppLogger.info('=== WEB VOICE INIT ===');
+
+    await waitForVoices();
+    _selectVoice();
+
     try {
       _webSttReady = await _webStt.initialize(
         onError: (e) => AppLogger.error('WebSTT error: ${e.errorMsg}'),
@@ -262,10 +266,37 @@ class _WebAetherisVoice extends AetherisVoice {
     } catch (e) {
       AppLogger.error('WebSTT init: $e');
     }
+
     _utterance.lang = 'es-MX';
     _utterance.rate = 0.92;
     _utterance.pitch = 0.78;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
+  }
+
+  void _selectVoice() {
+    final synth = _synth;
+    if (synth == null) return;
+    final voices = synth.getVoices();
+    if (voices.isEmpty) return;
+
+    final maleName = findMaleSpanishVoice();
+    if (maleName != null) {
+      for (final v in voices) {
+        if (v.name == maleName) {
+          _utterance.voice = v;
+          AppLogger.info('WebTTS voice: ${v.name}');
+          return;
+        }
+      }
+    }
+
+    for (final v in voices) {
+      if (v.lang.toLowerCase().startsWith('es')) {
+        _utterance.voice = v;
+        AppLogger.info('WebTTS fallback: ${v.name}');
+        return;
+      }
+    }
   }
 
   @override
