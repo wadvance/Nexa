@@ -18,8 +18,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
 
-  final AetherisVoice _voice    = AetherisVoice.instance;
-  final VoiceCommands _commands = VoiceCommands();
+  AetherisVoice? _voice;
+  VoiceCommands? _commands;
 
   bool   _busy       = false;
   bool   _started    = false;
@@ -47,10 +47,14 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb) {
+      _voice = AetherisVoice.instance;
+      _commands = VoiceCommands();
+    }
     _pulse = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _initVoice();
+    if (!kIsWeb) _initVoice();
   }
 
   @override
@@ -58,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
     _pulse.dispose();
     _voiceState.dispose();
     _unauthorizedWarning.dispose();
-    _voice.stop();
+    _voice?.stop();
     super.dispose();
   }
 
@@ -66,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _initVoice() async {
     try {
-      await _voice.init();
+      await _voice!.init();
       AppLogger.info('Voice ready');
     } catch (e) {
       AppLogger.error('Voice init: $e');
