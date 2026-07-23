@@ -53,6 +53,15 @@ class _AuthGateState extends State<AuthGate> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    if (kIsWeb) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF121212),
+        body: Center(
+          child: Text('AETHERIS Web — diagnóstico',
+              style: TextStyle(color: Colors.white70, fontSize: 18)),
+        ),
+      );
+    }
     return const HomeScreen();
   }
 }
