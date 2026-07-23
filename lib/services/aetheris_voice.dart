@@ -338,28 +338,33 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   Future<String> listenOnce() async {
     if (!_webSttReady) return '';
+    _state = VoiceState.listening;
     final completer = Completer<String>();
     try {
       await _webStt.listen(
         onResult: (r) {
           final words = r.recognizedWords.trim();
+          AppLogger.info('WebSTT partial: "$words" final=${r.finalResult}');
           if (r.finalResult && words.isNotEmpty) {
             if (!completer.isCompleted) completer.complete(words);
           }
         },
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
-          listenFor: const Duration(seconds: 10),
-          pauseFor: const Duration(milliseconds: 800),
+          listenFor: const Duration(seconds: 5),
+          pauseFor: const Duration(milliseconds: 600),
           partialResults: true,
         ),
       );
-      return await completer.future.timeout(
-        const Duration(seconds: 12),
+      final result = await completer.future.timeout(
+        const Duration(seconds: 7),
         onTimeout: () => '',
       );
+      _state = VoiceState.idle;
+      return result;
     } catch (e) {
       AppLogger.error('WebSTT listen: $e');
+      _state = VoiceState.idle;
       return '';
     }
   }
