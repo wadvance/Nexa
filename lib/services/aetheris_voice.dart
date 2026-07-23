@@ -294,18 +294,31 @@ class _WebAetherisVoice extends AetherisVoice {
         if (results.length == 0) return;
         final last = results.item(results.length - 1);
         final transcript = last.item(0).transcript.trim();
+        final isFinal = last.isFinal;
         if (transcript.isEmpty) return;
-        AppLogger.info('WebSpeech: "$transcript"');
+        if (transcript.length < 3) return;
+        AppLogger.info('WebSpeech: "$transcript" final=$isFinal');
 
         _stabilityTimer?.cancel();
-        _stabilityTimer = Timer(const Duration(milliseconds: 400), () {
+        if (isFinal) {
+          // El navegador detectó una pausa → entregar inmediatamente
           if (_webNextResult != null) {
             _webNextResult!.complete(transcript);
             _webNextResult = null;
           } else {
             _webPendingResults.add(transcript);
           }
-        });
+        } else {
+          // Resultado parcial → esperar estabilidad
+          _stabilityTimer = Timer(const Duration(milliseconds: 800), () {
+            if (_webNextResult != null) {
+              _webNextResult!.complete(transcript);
+              _webNextResult = null;
+            } else {
+              _webPendingResults.add(transcript);
+            }
+          });
+        }
       }).toJS;
 
       _webSpeech!.onerror = ((web.Event e) {
