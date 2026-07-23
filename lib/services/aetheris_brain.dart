@@ -1,9 +1,6 @@
 import 'dart:convert';
-import 'dart:js_interop';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:web/web.dart' as web;
 import '../utils/logger.dart';
 import 'conversation_memory_service.dart';
 import 'knowledge_domain_service.dart';
@@ -267,80 +264,15 @@ mantente atento por si hay réplicas.
     String key,
     List<Map<String, dynamic>> messages,
   ) async {
-    return kIsWeb
-        ? await _callOpenRouterWeb(key, messages)
-        : await _callOpenRouterNative(key, messages);
-  }
-
-  /// Llamada a OpenRouter desde Flutter Web usando `window.fetch`.
-  /// Evita los problemas de CORS que tiene el `http` package de Flutter
-  /// con `XMLHttpRequest` cuando se usan headers personalizados.
-  static Future<String> _callOpenRouterWeb(
-    String key,
-    List<Map<String, dynamic>> messages,
-  ) async {
-    try {
-      const url = 'https://openrouter.ai/api/v1/chat/completions';
-      final body = json.encode({
-        'model': 'google/gemma-2-27b-it',
-        'messages': messages,
-        'temperature': 0.5,
-        'max_tokens': maxTokens,
-      });
-      final headers = <String, String>{
-        'Authorization': 'Bearer $key',
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://ardissantiago.github.io/Nexa/',
-        'X-Title': 'AETHERIS',
-      };
-
-      final init = web.RequestInit(
-        method: 'POST',
-        headers: headers.jsify() as web.HeadersInit,
-        body: body.jsify(),
-      );
-
-      final response = await web.window
-          .fetch(url.toJS, init)
-          .toDart;
-      final status = response.status;
-      if (status != 200) {
-        final errBody = await response.text().toDart;
-        AppLogger.error('OpenRouter HTTP $status: $errBody');
-        return '';
-      }
-      final dataJson = await response.json().toDart;
-      final data = dataJson.dartify() as Map;
-      final choices = data['choices'] as List?;
-      if (choices == null || choices.isEmpty) {
-        AppLogger.error('OpenRouter: sin choices en respuesta');
-        return '';
-      }
-      return (choices.first as Map)['message']?['content']
-              ?.toString().trim() ??
-          '';
-    } catch (e) {
-      AppLogger.error('OpenRouter (web) error: $e');
-      return '';
-    }
-  }
-
-  /// Llamada a OpenRouter con `package:http` para nativo.
-  static Future<String> _callOpenRouterNative(
-    String key,
-    List<Map<String, dynamic>> messages,
-  ) async {
     try {
       final resp = await http.post(
         Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer $key',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://nexa.aetheris.app',
-          'X-Title': 'AETHERIS',
         },
         body: json.encode({
-          'model': 'google/gemma-2-27b-it',
+          'model': 'google/gemma-4-31b-it:free',
           'messages': messages,
           'temperature': 0.5,
           'max_tokens': maxTokens,
