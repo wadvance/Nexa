@@ -278,24 +278,37 @@ class _WebAetherisVoice extends AetherisVoice {
     if (synth == null) return;
     final voices = synth.getVoices();
     final list = voices.toDart;
+    if (list.isEmpty) return;
 
     final maleName = findMaleSpanishVoice();
-    if (maleName != null) {
-      for (final v in list) {
-        if (v.name == maleName) {
+    web.SpeechSynthesisVoice? fallback;
+
+    for (final v in list) {
+      final name = v.name.toLowerCase();
+      final lang = v.lang.toLowerCase();
+
+      if (!lang.startsWith('es')) continue;
+
+      fallback ??= v;
+
+      if (maleName != null && name == maleName.toLowerCase()) {
+        _utterance.voice = v;
+        AppLogger.info('WebTTS: ${v.name} (${v.lang})');
+        return;
+      }
+
+      if (maleName == null) {
+        if (name.contains('male') || name.contains('masculine')) {
           _utterance.voice = v;
-          AppLogger.info('WebTTS voice: ${v.name}');
+          AppLogger.info('WebTTS male: ${v.name}');
           return;
         }
       }
     }
 
-    for (final v in list) {
-      if (v.lang.toLowerCase().startsWith('es')) {
-        _utterance.voice = v;
-        AppLogger.info('WebTTS fallback: ${v.name}');
-        return;
-      }
+    if (fallback != null) {
+      _utterance.voice = fallback;
+      AppLogger.info('WebTTS fallback: ${fallback.name}');
     }
   }
 
@@ -305,9 +318,14 @@ class _WebAetherisVoice extends AetherisVoice {
     _state = VoiceState.speaking;
     final completer = Completer<void>();
     _utterance.text = text;
-    _utterance.onend = (() => completer.complete()).toJS;
+    _utterance.onend = (() {
+      if (!completer.isCompleted) completer.complete();
+    }).toJS;
+    _utterance.onerror = (() {
+      if (!completer.isCompleted) completer.complete();
+    }).toJS;
     _synth!.speak(_utterance);
-    await completer.future;
+    await completer.future.timeout(const Duration(seconds: 15), onTimeout: () {});
     _state = VoiceState.idle;
   }
 
@@ -320,15 +338,25 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   Future<String> listenOnce() async {
     if (!_webSttReady) return '';
+    final completer = Completer<String>();
     try {
-      return await _webStt.listen(
-        onResult: (r) => _lastResult = r.recognizedWords,
+      await _webStt.listen(
+        onResult: (r) {
+          final words = r.recognizedWords.trim();
+          if (r.finalResult && words.isNotEmpty) {
+            if (!completer.isCompleted) completer.complete(words);
+          }
+        },
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
           listenFor: const Duration(seconds: 10),
           pauseFor: const Duration(milliseconds: 800),
           partialResults: true,
         ),
+      );
+      return await completer.future.timeout(
+        const Duration(seconds: 12),
+        onTimeout: () => '',
       );
     } catch (e) {
       AppLogger.error('WebSTT listen: $e');
