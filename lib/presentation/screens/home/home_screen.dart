@@ -44,6 +44,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   late AnimationController _pulse;
 
+  // Web: entrada de texto cuando el micrófono no está disponible
+  final TextEditingController _webInputCtrl = TextEditingController();
+  final FocusNode _webInputFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen>
     _pulse.dispose();
     _voiceState.dispose();
     _unauthorizedWarning.dispose();
+    _webInputCtrl.dispose();
+    _webInputFocus.dispose();
     _voice.stop();
     super.dispose();
   }
@@ -87,19 +93,37 @@ class _HomeScreenState extends State<HomeScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
-    await _hablarYEscuchar('$saludo. Soy AETHERIS. ¿En qué puedo ayudarte?');
+    final mensaje = '$saludo. Soy AETHERIS. ¿En qué puedo ayudarte?';
+    setState(() { _statusText = 'Hablando…'; _lastBot = mensaje; });
+    await _voice.speak(mensaje);
+    _syncVoiceState();
+    if (kIsWeb) {
+      setState(() => _statusText = 'Escribe tu mensaje…');
+      _voiceState.value = VoiceState.idle;
+    } else if (mounted) {
+      _loop();
+    }
   }
 
-  Future<void> _hablarYEscuchar(String texto) async {
-    if (!mounted) return;
-    setState(() { _statusText = 'Hablando…'; _lastBot = texto; });
+  Future<void> _onWebSend() async {
+    final txt = _webInputCtrl.text.trim();
+    if (txt.isEmpty || _busy) return;
+    _webInputCtrl.clear();
+    setState(() { _busy = true; _lastUser = txt; _statusText = '⏳ Procesando…'; });
     try {
-      await _voice.speak(texto);
+      final respuesta = await _commands.execute(txt, context, _uid);
+      _lastBot = respuesta;
+      _chatHistory.add(ChatMessage(role: 'user', text: txt));
+      _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
+      setState(() { _busy = false; _statusText = respuesta; });
+      await _voice.speak(respuesta);
     } catch (e) {
-      AppLogger.error('speak: $e');
+      setState(() { _busy = false; _statusText = 'Error: $e'; });
     }
-    _syncVoiceState();
-    if (mounted) _loop();
+    if (mounted) {
+      setState(() => _statusText = 'Escribe tu mensaje…');
+      _webInputFocus.requestFocus();
+    }
   }
 
   Future<void> _loop() async {
@@ -124,9 +148,10 @@ class _HomeScreenState extends State<HomeScreen>
       }
 
       if (mounted) setState(() => _statusText = '🎤 Escuchando…');
+      final listenFuture = _voice.listenOnce();
       _syncVoiceState();
 
-      final texto = await _voice.listenOnce();
+      final texto = await listenFuture;
       _syncVoiceState();
       if (!mounted) break;
 
@@ -622,6 +647,44 @@ class _HomeScreenState extends State<HomeScreen>
             );
           },
         ),
+
+        if (kIsWeb && _started)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _webInputCtrl,
+                  focusNode: _webInputFocus,
+                  enabled: !_busy,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: _busy ? 'Procesando…' : 'Escribe aquí…',
+                    hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3)),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 12),
+                  ),
+                  onSubmitted: (_) => _onWebSend(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _busy ? null : _onWebSend,
+                icon: const Icon(Icons.send_rounded,
+                    color: Colors.deepPurpleAccent),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+            ]),
+          ),
       ]),
     );
   }
