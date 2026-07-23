@@ -15,14 +15,23 @@ import 'presentation/screens/auth/auth_gate.dart';
 import 'presentation/screens/voice_test_screen.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  FlutterError.onError = (details) {
-    dev.log('FlutterError: ${details.exception}\n${details.stack}');
-    FlutterError.presentError(details);
-  };
+    FlutterError.onError = (details) {
+      dev.log('FlutterError: ${details.exception}\n${details.stack}');
+      FlutterError.presentError(details);
+    };
 
-  runApp(const AetherisApp());
+    PlatformDispatcher.instance.onError = (error, stack) {
+      dev.log('PlatformDispatcher error: $error\n$stack');
+      return true;
+    };
+
+    runApp(const AetherisApp());
+  }, (error, stack) {
+    dev.log('runZonedGuarded error: $error\n$stack');
+  });
 }
 
 Future<void> initServices() async {
