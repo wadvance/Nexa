@@ -339,6 +339,8 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   Future<String> listenOnce() async {
     if (!_webSttReady) return '';
+    // Asegurar que no haya una sesión previón colgada
+    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
     _state = VoiceState.listening;
     final completer = Completer<String>();
     Timer? partialTimer;
@@ -395,6 +397,6 @@ class _WebAetherisVoice extends AetherisVoice {
   @override
   void stop() {
     _synth?.cancel();
-    try { _webStt.stop(); } catch (_) {}
+    try { if (_webStt.isListening) _webStt.stop(); } catch (_) {}
   }
 }

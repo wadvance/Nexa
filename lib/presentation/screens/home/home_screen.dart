@@ -97,31 +97,34 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _webListenOnce() async {
-    if (_busy || _voice.speaking || !_started) return;
-    if (!_voice.sttReady) {
-      setState(() => _statusText = '⚠ Micrófono no disponible');
-      return;
-    }
-    setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
-    _syncVoiceState();
-    final texto = await _voice.listenOnce();
-    _syncVoiceState();
-    if (!mounted) return;
-    if (texto.isEmpty) {
-      setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
-      return;
-    }
-    setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
     try {
+      if (_busy || _voice.speaking || !_started) return;
+      _syncVoiceState();
+      if (!_voice.sttReady) {
+        setState(() => _statusText = '⚠ Micrófono no disponible');
+        return;
+      }
+      setState(() { _busy = true; _statusText = '🎤 Escuchando…'; });
+      // NOTA: sin await adicional antes de listenOnce para
+      // que el reconocimiento comience dentro del gesto del usuario.
+      final texto = await _voice.listenOnce();
+      if (!mounted) return;
+      if (texto.isEmpty) {
+        setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
+        return;
+      }
+      setState(() { _lastUser = texto; _statusText = '⏳ Procesando…'; });
+      _syncVoiceState();
       final respuesta = await _commands.execute(texto, context, _uid);
       _lastBot = respuesta;
       _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
       await _voice.speak(respuesta);
-    } catch (e) {
-      AppLogger.error('_webListenOnce: $e');
+      if (mounted) setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
+    } catch (e, st) {
+      AppLogger.error('_webListenOnce: $e\n$st');
+      if (mounted) setState(() { _busy = false; _statusText = 'Error: toca de nuevo'; });
     }
-    setState(() { _busy = false; _statusText = 'Toca el círculo para hablar'; });
   }
 
   Future<void> _loop() async {
