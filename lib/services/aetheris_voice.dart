@@ -270,7 +270,6 @@ class _WebAetherisVoice extends AetherisVoice {
   Completer<String>? _webNextResult;
   final List<String> _webPendingResults = [];
   Timer? _stabilityTimer;
-  JSFunction? _savedOnEnd;
 
   @override
   bool get sttReady => _webSttReady;
@@ -329,7 +328,6 @@ class _WebAetherisVoice extends AetherisVoice {
       _webSpeech!.onend = ((web.Event e) {
         AppLogger.info('WebSpeech onend');
       }).toJS;
-      _savedOnEnd = _webSpeech!.onend;
 
       _webSttReady = true;
     } catch (e) {
@@ -428,14 +426,11 @@ class _WebAetherisVoice extends AetherisVoice {
       _webSpeech?.stop();
       // Esperar onend antes de poder llamar start() de nuevo
       final ended = Completer<void>();
-      final savedOnEnd = _savedOnEnd;
       _webSpeech!.onend = ((web.Event e) {
         AppLogger.info('WebSpeech onend (speak stop)');
         if (!ended.isCompleted) ended.complete();
       }).toJS;
       await ended.future.timeout(const Duration(seconds: 2), onTimeout: () {});
-      // Restaurar el onend original después de que el stop complete
-      if (savedOnEnd != null) _webSpeech!.onend = savedOnEnd;
     }
     _state = VoiceState.speaking;
     final completer = Completer<void>();
