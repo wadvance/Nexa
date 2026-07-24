@@ -103,7 +103,7 @@ class AetherisLocalBrain {
           'y reduce la cafeína por la tarde. Si persiste más de 2 semanas, consulta a un médico. '
           'No recomiendo melatonina sin supervisión profesional.';
     }
-    if (_any(q, ['medicamento', 'medicina', 'pastilla', 'droga', 'fármaco', 'farmaco'])) {
+    if (!q.contains('farmacia') && _any(q, ['medicamento', 'medicina', 'pastilla', 'droga', 'fármaco', 'farmaco'])) {
       return 'Para darte información precisa de un medicamento necesito mi núcleo en la nube. '
           'Mientras tanto: lee siempre el prospecto, respeta la dosis, no mezcles con alcohol '
           'y consulta a tu médico o farmacéutico. ¿Cuál medicamento específicamente?';

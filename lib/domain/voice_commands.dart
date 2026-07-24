@@ -136,7 +136,8 @@ class VoiceCommands {
         'navegar', 'ir a', 'a buscar', 'quiero ir',
         'donde queda', 'dónde queda', 'donde esta', 'dónde está',
         'donde hay', 'dónde hay', 'ubicación de', 'ubicacion de',
-        'buscar', 'encuentra', 'localiza']) &&
+        'buscar', 'encuentra', 'localiza',
+        'farmacia', 'restaurante', 'taller']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
       final kbResp = await AetherisLocalBrain.answer(rawCommand);
       if (!_isGenericFallback(kbResp)) {
@@ -234,11 +235,12 @@ class VoiceCommands {
     }
 
     // Si la IA falló (429, error de red), intentamos navegación como último recurso
-    // para consultas que parezcan de ubicaciones
     if (_any(cmd, ['farmacia', 'tienda', 'restaurante', 'taller', 'super',
-        'hospital', 'clínica', 'clinica', 'escuela', 'colegio',
-        'parque', 'plaza', 'centro', 'iglesia', 'banco',
-        'metro', 'arrocha', 'machetazo', 'rey', 'kfc', 'mcdonald'])) {
+        'supermercado', 'minisuper', 'hospital', 'clínica', 'clinica',
+        'escuela', 'colegio', 'parque', 'plaza', 'centro',
+        'iglesia', 'banco', 'metro', 'arrocha', 'machetazo',
+        'rey', 'kfc', 'mcdonald', 'zapatería', 'zapateria',
+        'almacén', 'almacen', 'toyota', 'hyundai', 'honda'])) {
       return _openNavigation(rawCommand);
     }
 
