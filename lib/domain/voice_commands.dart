@@ -600,7 +600,9 @@ class VoiceCommands {
       if (resp.toLowerCase().contains('no pude') ||
           resp.toLowerCase().contains('error') ||
           resp.toLowerCase().contains('verifica tu conexión') ||
-          resp.toLowerCase().contains('inténtalo de nuevo')) {
+          resp.toLowerCase().contains('inténtalo de nuevo') ||
+          resp.toLowerCase().contains('intenta de nuevo') ||
+          resp.toLowerCase().contains('problemas de conexión')) {
         return await AetherisLocalBrain.answer(question);
       }
       return resp;
