@@ -15,11 +15,13 @@ class WeatherService {
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
   /// Proxy CORS para entornos web (GitHub Pages).
-  /// Se configura via --dart-define=WEATHER_CORS_PROXY=<url>.
+  /// corsproxy.io usa formato: ?url=ENCODED_URL
+  /// Se configura via --dart-define=WEATHER_CORS_PROXY=<url>, ejemplo:
+  ///   --dart-define=WEATHER_CORS_PROXY="https://corsproxy.io/?url="
   static String? get _corsProxy {
     const v = String.fromEnvironment('WEATHER_CORS_PROXY');
-    if (v.isNotEmpty) return v.endsWith('/') ? v : '$v/';
-    return kIsWeb ? 'https://corsproxy.io/?' : null;
+    if (v.isNotEmpty) return v;
+    return kIsWeb ? 'https://corsproxy.io/?url=' : null;
   }
 
   static void _log(String msg) {
@@ -28,7 +30,7 @@ class WeatherService {
 
   static Future<Map<String, dynamic>?> _makeRequest(String url) async {
     try {
-      final target = _corsProxy != null ? '$_corsProxy$url' : url;
+      final target = _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(url)}' : url;
       _log('GET $target');
       final response = await http.get(Uri.parse(target)).timeout(
         const Duration(seconds: 10),

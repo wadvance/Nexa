@@ -20,10 +20,11 @@ class RealTimeHazardService {
   }
 
   /// Proxy CORS para entornos web (GitHub Pages).
+  /// corsproxy.io usa formato: ?url=ENCODED_URL
   static String? get _corsProxy {
     const v = String.fromEnvironment('WEATHER_CORS_PROXY');
-    if (v.isNotEmpty) return v.endsWith('/') ? v : '$v/';
-    return kIsWeb ? 'https://corsproxy.io/?' : null;
+    if (v.isNotEmpty) return v;
+    return kIsWeb ? 'https://corsproxy.io/?url=' : null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -97,7 +98,7 @@ class RealTimeHazardService {
     required double lon,
   }) async {
     try {
-      String wrap(String raw) => _corsProxy != null ? '$_corsProxy$raw' : raw;
+      String wrap(String raw) => _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(raw)}' : raw;
 
       // OneCall 3.0 (o 2.5 si 3.0 no está activo)
       var resp = await http.get(

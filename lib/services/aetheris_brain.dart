@@ -304,7 +304,6 @@ EJEMPLOS RÁPIDOS:
           'frequency_penalty': 0.5,
           'presence_penalty': 0.3,
           'top_p': 0.92,
-          'reasoning': {'enabled': true},
         }),
       ).timeout(const Duration(seconds: 30));
       if (resp.statusCode != 200) {
