@@ -8,8 +8,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Bluetooth para vehiculo
-  flutter_blue_plus: ^1.31.0
   # Criptografia SHA-256 (biometria de voz)
   crypto: ^3.0.3
   # Variables de entorno
