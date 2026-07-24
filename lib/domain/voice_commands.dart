@@ -221,8 +221,6 @@ class VoiceCommands {
     // Siempre intentamos con el conocimiento local (rápido, sin red).
     // Si la respuesta es genérica (el KB no tenía el dato), recurrimos a la IA.
     final localResp = await AetherisLocalBrain.answer(rawCommand);
-    print('[DEBUG 14.9] localResp="$localResp"');
-    print('[DEBUG 14.9] isGenericFallback=${_isGenericFallback(localResp)}');
     if (!_isGenericFallback(localResp)) {
       await ConversationMemoryService.addAssistant(localResp, topic: 'general');
       return localResp;

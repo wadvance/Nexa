@@ -309,7 +309,8 @@ class _WebAetherisVoice extends AetherisVoice {
             _webPendingResults.add(transcript);
           }
         } else {
-          // Resultado parcial → esperar estabilidad
+          // Resultado parcial → esperar estabilidad, solo si tiene ≥3 palabras
+          if (transcript.split(' ').length < 3) return;
           _stabilityTimer = Timer(const Duration(milliseconds: 300), () {
             if (_webNextResult != null) {
               _webNextResult!.complete(transcript);
