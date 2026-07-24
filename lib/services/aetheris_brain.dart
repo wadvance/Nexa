@@ -48,9 +48,15 @@ Ubicación del usuario: {UBICACION}
     }
 
     final userCtx = await UserMemoryService.systemPromptContext();
+    final convSummary = await ConversationMemoryService.recentSummary();
+
     String systemContent = _systemPrompt
         .replaceAll('{UBICACION}', locationContext)
         .replaceAll('{MEMORIA}', userCtx);
+
+    if (convSummary.isNotEmpty) {
+      systemContent += '\n\n$convSummary';
+    }
 
     if (extraInstruction.isNotEmpty) {
       systemContent += '\n\nINSTRUCCIÓN ADICIONAL:\n$extraInstruction';

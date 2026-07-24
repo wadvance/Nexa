@@ -85,15 +85,40 @@ class ConversationMemoryService {
     return _messages.sublist(start);
   }
 
-  /// Últimos [contextWindow] intercambios completos (usuario + asistente)
-  /// para mantener la coherencia conversacional.
+  /// Últimos [contextWindow] mensajes del usuario como contexto,
+  /// más un breve resumen de lo que AETHERIS respondió.
+  /// No incluimos las respuestas del asistente directamente para
+  /// evitar que el modelo las repita (mimesis).
   static Future<List<Map<String, String>>> llmContext() async {
     await load();
     if (_messages.isEmpty) return [];
-    final window = _messages.length > contextWindow * 2
-        ? _messages.sublist(_messages.length - contextWindow * 2)
-        : _messages;
+    final userMsgs = _messages.where((m) => m.role == 'user').toList();
+    if (userMsgs.isEmpty) return [];
+    final take = userMsgs.length > contextWindow
+        ? contextWindow
+        : userMsgs.length;
+    final window = userMsgs.sublist(userMsgs.length - take);
     return window.map((m) => {'role': m.role, 'content': m.text}).toList();
+  }
+
+  /// Breve resumen de la conversación reciente (temas + qué dijo el asistente)
+  /// para dar contexto al modelo sin exponer las respuestas textuales.
+  static Future<String> recentSummary() async {
+    await load();
+    if (_messages.isEmpty) return '';
+    final recent = _messages.length > 6
+        ? _messages.sublist(_messages.length - 6)
+        : _messages;
+    final buf = StringBuffer('Resumen de la conversación reciente: ');
+    for (final m in recent) {
+      if (m.role == 'user') {
+        buf.write('usuario preguntó sobre "${m.text.substring(0, m.text.length.clamp(0, 60))}". ');
+      } else {
+        final t = m.topic != 'general' ? ' (tema: ${m.topic})' : '';
+        buf.write('AETHERIS respondió$t. ');
+      }
+    }
+    return buf.toString();
   }
 
   /// Busca mensajes que contengan [keyword].
