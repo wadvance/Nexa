@@ -210,19 +210,25 @@ class VoiceCommands {
       return _helpText();
     }
 
-    // ── 14.9 Preguntas locales (hora, fecha, cálculos, info general) ───────────────────
-    // Si la pregunta encaja con algo que el cerebro local puede resolver,
-    // lo atendemos ahí para evitar gasto de IA y latencia alta.
-    if (_isLocalBrainQuestion(cmd)) {
-      final resp = await AetherisLocalBrain.answer(rawCommand);
-      await ConversationMemoryService.addAssistant(resp, topic: 'general');
-      return resp;
+    // ── 14.9 Cerebro local (primero) ──────────────────────────────────────
+    // Siempre intentamos con el conocimiento local (rápido, sin red).
+    // Si la respuesta es genérica (el KB no tenía el dato), recurrimos a la IA.
+    final localResp = await AetherisLocalBrain.answer(rawCommand);
+    if (!_isGenericFallback(localResp)) {
+      await ConversationMemoryService.addAssistant(localResp, topic: 'general');
+      return localResp;
     }
 
-    // ── 16. Conversación IA libre (fallback) ──────────────────────────────
-    final resp = await _askGemini(rawCommand);
-    await ConversationMemoryService.addAssistant(resp, topic: 'general');
-    return resp;
+    // ── 16. Conversación IA libre (fallback si local no sabe) ─────────────
+    final aiResp = await _askGemini(rawCommand);
+    if (aiResp.isNotEmpty) {
+      await ConversationMemoryService.addAssistant(aiResp, topic: 'general');
+      return aiResp;
+    }
+
+    // Si la IA falló (429, error de red), devolvemos lo que dijo el cerebro local
+    await ConversationMemoryService.addAssistant(localResp, topic: 'general');
+    return localResp;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -512,32 +518,21 @@ class VoiceCommands {
     return dp[la][lb] <= max;
   }
 
-  /// Detecta preguntas que el cerebro local puede resolver sin IA.
-  /// Hora, fecha, cálculos, identidad, saludos compuestos, etc.
-  bool _isLocalBrainQuestion(String q) {
-    const localTriggers = [
-      'qué hora', 'que hora', 'hora es', 'la hora', 'hora actual',
-      'que horas son', 'dime la hora', 'me dices la hora', 'dame la hora',
-      'me das la hora', 'me puedes dar la hora', 'puedes decirme la hora',
-      'sabes la hora', 'qué horas', 'que horas',
-      'qué día', 'que día', 'fecha', 'que fecha', 'qué fecha',
-      'día de hoy', 'qué día es hoy', 'fecha de hoy', 'que día es',
-      'eres', 'quien eres', 'quién eres', 'qué eres', 'que eres',
-      'cómo te llamas', 'como te llamas', 'tu nombre',
-      'gracias', 'mil gracias', 'te agradezco',
-      'adiós', 'adios', 'hasta luego', 'nos vemos', 'chao', 'chau',
-      'cuánto es', 'cuanto es', '+', '-', 'por', 'entre',
-      'multiplica', 'suma', 'resta', 'divide',
+  /// Verdadero si la respuesta del cerebro local es un fallback genérico
+  /// (el KB no tenía el dato específico), lo que indica que debemos
+  /// recurrir a la IA en la nube.
+  bool _isGenericFallback(String resp) {
+    const genericStarts = [
+      'Dime más, estoy aquí.',
+      'Cuéntame con más detalle.',
+      'Explícame un poco más.',
+      'Buena pregunta.',
+      'Es un tema amplio.',
+      'Normalmente hay múltiples factores.',
+      'Es un tema interesante.',
     ];
-    for (final t in localTriggers) {
-      if (q.contains(t)) return true;
-    }
-    // También: si el texto es muy corto (saludo-like), delegar a LocalBrain.
-    if (q.length <= 35 && _any(q, [
-      'hola', 'buenas', 'saludos', 'qué tal', 'que tal',
-      'buen día', 'buenos días', 'buen dia', 'tarde', 'noche',
-    ])) {
-      return true;
+    for (final prefix in genericStarts) {
+      if (resp.startsWith(prefix)) return true;
     }
     return false;
   }
