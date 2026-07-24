@@ -81,7 +81,7 @@ Ubicación del usuario: {UBICACION}
   static Future<String> _callOpenRouter(
     String key,
     List<Map<String, dynamic>> messages,
-    {int attempt = 1},
+    {int attempt = 1}
   ) async {
     try {
       final resp = await http.post(
