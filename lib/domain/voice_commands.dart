@@ -134,7 +134,8 @@ class VoiceCommands {
     // ── 6. Navegación ────────────────────────────────────────────────────
     if (_any(cmd, ['waze', 'google maps', 'mapa', 'abrir mapa', 'llévame',
         'navegar', 'ir a', 'a buscar', 'quiero ir',
-        'donde queda', 'dónde queda', 'ubicación de', 'ubicacion de',
+        'donde queda', 'dónde queda', 'donde esta', 'dónde está',
+        'donde hay', 'dónde hay', 'ubicación de', 'ubicacion de',
         'buscar', 'encuentra', 'localiza']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
       final kbResp = await AetherisLocalBrain.answer(rawCommand);

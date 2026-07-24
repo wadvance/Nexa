@@ -4,9 +4,10 @@ class KnowledgeBase {
   }
 
   static String? _find(String q) {
+    final lq = q.toLowerCase();
     for (final entry in _entries) {
       for (final kw in entry.keywords) {
-        if (q.contains(kw)) return entry.response;
+        if (lq.contains(kw)) return entry.response;
       }
     }
     return null;
@@ -399,8 +400,8 @@ class KnowledgeBase {
     _Entry(['boquete clima', 'boquete temperatura', 'boquete frío', 'clima en boquete'], 'Boquete, en Chiriquí, tiene un clima de montaña con temperaturas de 15-25°C durante el día y 10-15°C por la noche. La temporada más fría es diciembre-enero. Es famoso por su café geisha, el valle del río Caldera, el Quetzal (ave emblemática), y el festival de las flores y el café en enero.'),
 
     // ── UBICACIONES ESPECÍFICAS: FARMACIAS ────────────────────────────────
-    _Entry(['farmacia metro bugaba', 'metro bugaba'], 'Farmacias Metro tiene sucursal en Bugaba, Chiriquí, específicamente en la entrada de La Concepción, frente al parque central. Horario de lunes a sábado 7am a 9pm, domingo 8am a 6pm.'),
-    _Entry(['farmacia arrocha bugaba', 'arrocha bugaba'], 'Farmacias Arrocha tiene una sucursal en Bugaba, Chiriquí, ubicada en la vía principal de La Concepción, frente a la iglesia Católica.'),
+    _Entry(['farmacia metro bugaba', 'metro bugaba', 'metro en bugaba', 'farmacia metro en bugaba', 'farmacia metro de bugaba', 'la farmacia metro bugaba'], 'Farmacias Metro tiene sucursal en Bugaba, Chiriquí, específicamente en la entrada de La Concepción, frente al parque central. Horario de lunes a sábado 7am a 9pm, domingo 8am a 6pm.'),
+    _Entry(['farmacia arrocha bugaba', 'arrocha bugaba', 'arrocha en bugaba', 'farmacia arrocha en bugaba'], 'Farmacias Arrocha tiene una sucursal en Bugaba, Chiriquí, ubicada en la vía principal de La Concepción, frente a la iglesia Católica.'),
     _Entry(['farmacia metro david', 'metro david'], 'Farmacias Metro en David, Chiriquí, tiene sucursales en: Vía Interamericana (frente al Mall Chiriquí), Calle Central (frente al parque Cervantes), y en el Terminal de David. Horario 7am a 9pm, algunas 24h.'),
     _Entry(['farmacia arrocha david', 'arrocha david'], 'Farmacias Arrocha en David, Chiriquí, está ubicada en la Vía Interamericana, en el edificio Plaza Terronal, frente al Mall Chiriquí.'),
     _Entry(['farmacia metro panamá', 'metro panamá', 'metro vía españa', 'metro el dorado'], 'Farmacias Metro en la Ciudad de Panamá tiene múltiples sucursales: Vía España (24h), El Dorado (24h), Albrook Mall, Los Pueblos, Costa del Este, San Miguelito, Juan Díaz, Bethania, Pueblo Nuevo, Parque Lefevre, San Francisco.'),
