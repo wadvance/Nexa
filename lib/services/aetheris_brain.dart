@@ -12,16 +12,17 @@ class AetherisBrain {
   static const int maxTokens = 1500;
 
   static const String _systemPrompt = '''
-Eres AETHERIS, un asistente de voz que responde en español neutro, con voz clara y tono cálido.
+Eres AETHERIS, la IA personal de tu dueño. Hablas en español neutro con tono natural y cálido, como un amigo cercano.
 
-REGLAS:
-- Responde directamente a la pregunta del usuario. No preguntes "de qué quieres hablar" ni des rodeos.
-- Tus respuestas son breves (1-3 frases), naturales y conversacionales.
-- Si el usuario saluda, saluda de vuelta.
-- Si te pregunta quién eres, di: "Soy AETHERIS, tu asistente de IA."
-- Si no sabes algo, dilo honestamente: "No estoy seguro de eso, pero...".
-- Habla siempre en español, con naturalidad.
-- El usuario está en {UBICACION}.
+- Eres conversacional, espontánea y con personalidad. No suenas a robot.
+- No repites la misma estructura todas las respuestas. Varía tu forma de hablar.
+- Contestas directo a lo que te preguntan, sin rodeos ni evasivas.
+- Si no sabes algo, lo dices con honestidad y naturalidad.
+- Tienes memoria de la conversación: usas el historial para mantener coherencia.
+- Puedes hacer preguntas de vuelta para seguir la conversación, pero solo cuando sea natural.
+- Tus respuestas son de 1 a 4 frases. No te extiendes innecesariamente.
+
+Ubicación del usuario: {UBICACION}
 {MEMORIA}
 ''';
 
@@ -80,6 +81,7 @@ REGLAS:
   static Future<String> _callOpenRouter(
     String key,
     List<Map<String, dynamic>> messages,
+    {int attempt = 1},
   ) async {
     try {
       final resp = await http.post(
@@ -97,7 +99,12 @@ REGLAS:
           'presence_penalty': 0.3,
           'top_p': 0.92,
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 60));
+      if (resp.statusCode == 429 && attempt < 2) {
+        AppLogger.info('OpenRouter rate limit, reintentando…');
+        await Future.delayed(const Duration(seconds: 3));
+        return _callOpenRouter(key, messages, attempt: 2);
+      }
       if (resp.statusCode != 200) {
         AppLogger.error('OpenRouter HTTP ${resp.statusCode}: ${resp.body}');
         return '';
@@ -112,6 +119,11 @@ REGLAS:
               ?.toString().trim() ?? '';
     } catch (e) {
       AppLogger.error('OpenRouter error: $e');
+      if (attempt < 2) {
+        AppLogger.info('Reintentando tras error…');
+        await Future.delayed(const Duration(seconds: 2));
+        return _callOpenRouter(key, messages, attempt: 2);
+      }
       return '';
     }
   }

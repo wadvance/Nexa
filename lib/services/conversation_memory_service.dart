@@ -85,20 +85,14 @@ class ConversationMemoryService {
     return _messages.sublist(start);
   }
 
-  /// Últimos [contextWindow] mensajes del usuario (sin las respuestas del AI)
-  /// formateados para enviar al LLM. Si el AI ve sus propias respuestas, las
-  /// repite. Por eso filtramos: solo contexto del usuario.
-  /// Devuelve lista de maps [{role, content}].
+  /// Últimos [contextWindow] intercambios completos (usuario + asistente)
+  /// para mantener la coherencia conversacional.
   static Future<List<Map<String, String>>> llmContext() async {
     await load();
     if (_messages.isEmpty) return [];
-    // Solo mensajes del usuario (excluir respuestas del AI para evitar mimesis)
-    final userMsgs = _messages.where((m) => m.role == 'user').toList();
-    if (userMsgs.isEmpty) return [];
-    final take = userMsgs.length > contextWindow
-        ? contextWindow
-        : userMsgs.length;
-    final window = userMsgs.sublist(userMsgs.length - take);
+    final window = _messages.length > contextWindow * 2
+        ? _messages.sublist(_messages.length - contextWindow * 2)
+        : _messages;
     return window.map((m) => {'role': m.role, 'content': m.text}).toList();
   }
 
