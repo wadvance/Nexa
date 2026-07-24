@@ -133,8 +133,14 @@ class VoiceCommands {
 
     // ── 6. Navegación ────────────────────────────────────────────────────
     if (_any(cmd, ['waze', 'google maps', 'mapa', 'abrir mapa', 'llévame',
-        'navegar', 'ir a', 'a buscar', 'quiero ir']) &&
+        'navegar', 'ir a', 'a buscar', 'quiero ir',
+        'donde queda', 'dónde queda', 'ubicación de', 'ubicacion de',
+        'buscar', 'encuentra', 'localiza']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
+      final kbResp = await AetherisLocalBrain.answer(rawCommand);
+      if (!_isGenericFallback(kbResp)) {
+        return '$kbResp ${_openNavigation(rawCommand)}';
+      }
       return _openNavigation(rawCommand);
     }
 
@@ -379,7 +385,10 @@ class VoiceCommands {
   String _openNavigation(String raw) {
     final dest = raw
         .replaceAll(RegExp(
-            r'(abre|abrir|waze|google maps|mapa|navegar a|navegar hasta|ir a|llévame a|en)',
+            r'(abre|abrir|waze|google maps|mapa|navegar a|navegar hasta|ir a|'
+            r'llévame a|llévame|llévame hasta|en|donde queda|dónde queda|'
+            r'ubicación de|ubicacion de|buscar|encuentra|localiza|quiero ir a|'
+            r'a buscar|dónde está|donde esta|dónde hay|donde hay)',
             caseSensitive: false), '')
         .trim();
     final useGoogle = raw.toLowerCase().contains('google') ||
