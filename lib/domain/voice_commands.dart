@@ -71,10 +71,13 @@ class VoiceCommands {
 
     // ── 2.5. Comandos de control (parar / silenciar / repetir) ────────────────
     if (_any(cmd, ['parar', 'para', 'basta', 'cállate', 'callate',
-        'silencio', 'silenciar', 'detener', 'detén', 'deten',
-        'ya', 'alto', 'frena'])) {
-      // Marca audios como cortados y reproduce un silencio breve.
-      return ' ' ; // mensaje vacío -> TTS termina y vuelve a escuchar
+        'silencio', 'silenciar', 'detener', 'detén', 'deten', 'detente',
+        'parate', 'ya', 'alto', 'frena', 'halt', 'stop'])) {
+      // Cortar inmediatamente cualquier audio en reproducción,
+      // limpiar cola y dejar STT listo para el siguiente comando.
+      await _voice.stopSpeaking();
+      await _voice.startContinuous();
+      return ' ' ;
     }
     if (_any(cmd, ['repite', 'repetir', 'de nuevo', 'otra vez', 'no entendí',
         'no entendi', 'qué dijiste', 'que dijiste'])) {
@@ -204,7 +207,8 @@ class VoiceCommands {
     }
 
     // ── 11. Navegación ────────────────────────────────────────────────────
-    if (_any(cmd, ['waze', 'google maps', 'mapa', 'navegar', 'ir a']) &&
+    if (_any(cmd, ['waze', 'google maps', 'mapa', 'abrir mapa', 'llévame',
+        'navegar', 'ir a', 'a buscar', 'quiero ir']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
       return _openNavigation(rawCommand);
     }

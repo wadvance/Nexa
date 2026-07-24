@@ -7,7 +7,15 @@ URL final: `https://wadvance.github.io/Nexa/`
 1. **Crear el repo** (si no existe): `wadvance/Nexa` (público para Pages gratis).
 2. **Settings → Secrets and variables → Actions → New repository secret**:
    - `OPENROUTER_API_KEY` = tu clave `sk-or-…`
-   - `OPENWEATHERMAP_API_KEY` = tu clave (si la usas)
+   - `OPENWEATHERMAP_API_KEY` = tu clave (si la usas, OpenWeatherMap la consigues
+     gratis en https://openweathermap.org/api tras registrarte)
+   - `WEATHER_CORS_PROXY` = un proxy CORS para las llamadas al clima (opcional
+     — poné `https://corsproxy.io/?` para empezar). Sin este secret
+     las llamadas a OpenWeatherMap pueden fallar por CORS en GitHub Pages.
+
+Nota sobre **Waze**: NO requiere API key. La navegación se hace abriendo
+`https://waze.com/ul?q=...` directamente en el navegador. Decile a 
+AETHERIS "llévame al X", "abre Waze en Y", "navega hacia Z" y se abre solo.
 3. **Settings → Pages**:
    - Source: **GitHub Actions** (no "Deploy from a branch").
 4. **Push a `main`** → el workflow compila y publica.

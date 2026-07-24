@@ -340,41 +340,23 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.shield_outlined, size: 76,
+              const Icon(Icons.shield_outlined, size: 96,
                   color: Colors.deepPurpleAccent),
-              const SizedBox(height: 20),
-              const Text('AETHERIS',
-                  style: TextStyle(color: Colors.deepPurpleAccent,
-                      fontSize: 34, fontWeight: FontWeight.bold,
-                      letterSpacing: 3)),
-              const SizedBox(height: 6),
-              Text('Asistente inteligente · manos libres',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 13)),
               const SizedBox(height: 50),
               SizedBox(
-                width: 220, height: 54,
-                child: ElevatedButton.icon(
+                width: 220, height: 64,
+                child: ElevatedButton(
                   onPressed: _start,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(27)),
+                        borderRadius: BorderRadius.circular(32)),
                   ),
-                  icon: const Icon(Icons.mic, color: Colors.white),
-                  label: const Text('INICIAR',
-                      style: TextStyle(fontSize: 18, color: Colors.white,
-                          fontWeight: FontWeight.bold)),
+                  child: const Icon(Icons.mic, color: Colors.white, size: 36),
                 ),
               ),
               const SizedBox(height: 12),
-              Text('Toca una vez · luego es manos libres',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      fontSize: 12)),
-              const SizedBox(height: 36),
-              // chips removed (propietario, historial)
+              // Sin texto bajo el botón — la app es manos libres, todo se dice por voz.
             ],
           ),
         ),

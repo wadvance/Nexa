@@ -347,38 +347,71 @@ class _WebAetherisVoice extends AetherisVoice {
     final list = voices.toDart;
     if (list.isEmpty) return;
 
-    web.SpeechSynthesisVoice? latinFemale;
-    web.SpeechSynthesisVoice? latinAny;
+    // Orden de preferencia: México primero, después Latinoamérica, al final España.
+    final tier1 = <web.SpeechSynthesisVoice>[];   // es-MX
+    final tier2 = <web.SpeechSynthesisVoice>[];   // es-419, es-MX-US, es-LA, es-CO, es-CL, es-PE, es-VE
+    final tier3 = <web.SpeechSynthesisVoice>[];   // es-AR
+    final tier4 = <web.SpeechSynthesisVoice>[];   // es-ES
+    final tier5 = <web.SpeechSynthesisVoice>[];   // Cualquier otra es-*
 
-    const latinLocales = ['es-mx', 'es-us', 'es-419', 'es-la', 'es-co',
-                          'es-ar', 'es-cl', 'es-pe', 'es-ve'];
-    const femaleHints = ['female', 'woman', 'mujer', 'femenina',
-                         'maría', 'sofía', 'elena', 'paula', 'carmen',
-                         'mónica', 'laura', 'ana', 'valentina',
-                         'camila', 'isabella', 'gabriela', 'lucía',
-                         'samantha', 'helena', 'sabina'];
+    const femaleHints = [
+      'female', 'woman', 'mujer', 'femenina',
+      'maría', 'maria', 'sofía', 'sofia', 'elvira', 'elena', 'paula', 'carmen',
+      'mónica', 'monica', 'laura', 'ana', 'valentina',
+      'camila', 'isabella', 'gabriela', 'lucía', 'lucia',
+      'samantha', 'helena', 'sabina', 'paulita',
+    ];
+
+    // Nombres "naturales" mexicanos para preferir si existen
+    const mexicanHints = ['mexicana', 'mexico', 'mexican', 'xiomara', 'paloma', 'carmen'];
 
     for (final v in list) {
-      final name = v.name.toLowerCase();
       final lang = v.lang.toLowerCase();
       if (!lang.startsWith('es')) continue;
 
-      final isLatin = latinLocales.any((l) => lang.startsWith(l));
-      final isFemale = femaleHints.any((h) => name.contains(h));
-
-      if (isLatin && isFemale) latinFemale ??= v;
-      if (isLatin) latinAny ??= v;
+      // Categorizar por locale
+      if (lang.startsWith('es-mx')) {
+        tier1.add(v);
+      } else if (lang.startsWith('es-419') || lang.startsWith('es-la') ||
+                 lang.startsWith('es-co') || lang.startsWith('es-cl') ||
+                 lang.startsWith('es-pe') || lang.startsWith('es-ve')) {
+        tier2.add(v);
+      } else if (lang.startsWith('es-ar')) {
+        tier3.add(v);
+      } else if (lang.startsWith('es-es') || lang.startsWith('es-eu') || lang == 'es') {
+        tier4.add(v);
+      } else {
+        tier5.add(v);
+      }
     }
 
-    // Prioridad: latina femenina > cualquier latina > que el navegador elija
-    final selected = latinFemale ?? latinAny;
-    if (selected != null) {
-      _utterance.voice = selected;
-      AppLogger.info('WebTTS: ${selected.name} (${selected.lang})');
+    // Buscar la mejor voz: priorizar femenina + mexicana
+    web.SpeechSynthesisVoice? best;
+    bool isFemaleMatch(web.SpeechSynthesisVoice v) =>
+        femaleHints.any((h) => v.name.toLowerCase().contains(h)) ||
+        mexicanHints.any((h) => v.name.toLowerCase().contains(h));
+
+    for (final tier in [tier1, tier2, tier3, tier4, tier5]) {
+      // Primero buscar femenina en este tier
+      if (best == null) {
+        for (final v in tier) {
+          if (isFemaleMatch(v)) { best = v; break; }
+        }
+      }
+      // Si no hay femenina, tomar la primera del tier
+      if (best == null && tier.isNotEmpty) {
+        best = tier.first;
+      }
+      if (best != null) break;
+    }
+
+    if (best != null) {
+      _utterance.voice = best;
+      AppLogger.info('WebTTS: ${best.name} (${best.lang})');
     } else {
-      // Sin voice explícito: el navegador elige la mejor voz para es-MX
+      // Si no hay ninguna voz es-*, dejar que el navegador elija
       _utterance.voice = null;
-      AppLogger.info('WebTTS: sin voz latina, el navegador elige');
+      AppLogger.info('WebTTS: sin voz es-* disponible');
     }
   }
 
