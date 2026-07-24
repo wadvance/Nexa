@@ -136,9 +136,10 @@ class RealTimeHazardService {
   /// Alertas activas de GDACS (inundaciones, ciclones, tsunamis, etc.)
   static Future<List<DisasterAlert>> gdacsAlerts() async {
     try {
-      final uri = Uri.parse(
+      String wrap(String raw) => _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(raw)}' : raw;
+      final uri = Uri.parse(wrap(
         'https://www.gdacs.org/xml/rss.xml',
-      );
+      ));
       final resp = await http.get(uri).timeout(const Duration(seconds: 12));
       if (resp.statusCode != 200) return [];
       // Parseo básico de RSS XML sin librería externa
@@ -173,7 +174,8 @@ class RealTimeHazardService {
   /// Últimos reportes de enfermedades de ProMED (feed RSS abierto).
   static Future<List<EpidemicAlert>> epidemicAlerts({int max = 5}) async {
     try {
-      final uri = Uri.parse('https://promedmail.org/feed/');
+      String wrap(String raw) => _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(raw)}' : raw;
+      final uri = Uri.parse(wrap('https://promedmail.org/feed/'));
       final resp = await http.get(uri).timeout(const Duration(seconds: 12));
       if (resp.statusCode != 200) return [];
       return _parseEpidemicRss(resp.body, max);
