@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool   _started    = false;
   bool   _looping    = false;
   bool   _muted      = false;
+  String _lastResponse = '';
 
   // Historial
   bool              _showHistory    = false;
@@ -131,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       AppLogger.info('Process: "$texto"');
       var respuesta = await _commands.execute(texto, context, _uid);
+      _lastResponse = respuesta;
       AppLogger.info('Reply: "${respuesta.substring(0, respuesta.length.clamp(0, 120))}"');
       _chatHistory.add(ChatMessage(role: 'user', text: texto));
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
@@ -159,6 +161,9 @@ class _HomeScreenState extends State<HomeScreen>
         if (!mounted) break;
       }
       if (!mounted) break;
+      // Pausa para evitar que el micrófono capte el eco de la propia voz
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) break;
       _syncVoiceState();
 
       if (!_voice.sttReady) {
@@ -173,9 +178,23 @@ class _HomeScreenState extends State<HomeScreen>
       _syncVoiceState();
       if (!mounted) break;
 
-      if (texto.isEmpty) {
+      if (texto.isEmpty || texto.length < 3) {
         await Future.delayed(const Duration(milliseconds: 400));
         continue;
+      }
+      // Ignorar palabras sueltas que son probablemente eco
+      final trimmed = texto.trim().toLowerCase();
+      if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        continue;
+      }
+      // Ignorar si el texto transcrito es un eco de la última respuesta
+      if (_lastResponse.isNotEmpty) {
+        final respLower = _lastResponse.toLowerCase();
+        if (respLower.contains(trimmed) && trimmed.length > 4) {
+          await Future.delayed(const Duration(milliseconds: 400));
+          continue;
+        }
       }
 
       // ── Verificación biométrica de voz ─────────────────────────────────

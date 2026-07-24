@@ -101,21 +101,21 @@ class ConversationMemoryService {
     return window.map((m) => {'role': m.role, 'content': m.text}).toList();
   }
 
-  /// Breve resumen de la conversación reciente (temas + qué dijo el asistente)
-  /// para dar contexto al modelo sin exponer las respuestas textuales.
+  /// Resumen corto de los últimos intercambios para dar contexto al modelo.
+  /// Incluye un fragmento de lo que AETHERIS dijo para evitar que repita.
   static Future<String> recentSummary() async {
     await load();
     if (_messages.isEmpty) return '';
-    final recent = _messages.length > 6
-        ? _messages.sublist(_messages.length - 6)
+    final recent = _messages.length > 4
+        ? _messages.sublist(_messages.length - 4)
         : _messages;
-    final buf = StringBuffer('Resumen de la conversación reciente: ');
+    final buf = StringBuffer('Historial (últimos mensajes): ');
     for (final m in recent) {
       if (m.role == 'user') {
-        buf.write('usuario preguntó sobre "${m.text.substring(0, m.text.length.clamp(0, 60))}". ');
+        buf.write('Tú: "${m.text.substring(0, m.text.length.clamp(0, 40))}". ');
       } else {
-        final t = m.topic != 'general' ? ' (tema: ${m.topic})' : '';
-        buf.write('AETHERIS respondió$t. ');
+        final preview = m.text.substring(0, m.text.length.clamp(0, 60));
+        buf.write('Yo: "$preview". ');
       }
     }
     return buf.toString();
