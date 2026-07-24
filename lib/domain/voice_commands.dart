@@ -12,11 +12,8 @@ import '../services/car_bluetooth_service.dart';
 import '../services/user_service.dart';
 import '../services/weather_service.dart';
 import '../services/maps_service.dart';
-import '../services/fda_service.dart';
-import '../services/danger_check_service.dart';
-import '../services/realtime_hazard_service.dart';
-import '../services/knowledge_domain_service.dart';
 import '../services/conversation_memory_service.dart';
+import '../services/knowledge_domain_service.dart';
 import '../services/owner_guard_service.dart';
 import 'aetheris_engine.dart';
 import '../presentation/screens/analysis/analysis_screen.dart';
@@ -87,22 +84,7 @@ class VoiceCommands {
       return 'No tengo un mensaje anterior para repetir.';
     }
 
-    // ── 3. Peligros en tiempo real ─────────────────────────────────────────
-    if (_isDangerQuestion(cmd)) {
-      final resp = await _answerHazards(cmd);
-      await ConversationMemoryService.addAssistant(resp, topic: 'hazards');
-      return resp;
-    }
-
-    // ── 4. Nuevos virus / Epidemias ────────────────────────────────────────
-    if (_any(cmd, ['virus nuevo', 'nueva cepa', 'brote', 'epidemia',
-        'pandemia', 'enfermedad emergente', 'alerta sanitaria'])) {
-      final resp = await _answerEpidemics(rawCommand);
-      await ConversationMemoryService.addAssistant(resp, topic: 'newViruses');
-      return resp;
-    }
-
-    // ── 5. Clima / Tiempo ──────────────────────────────────────────────────
+    // ── 3. Clima / Tiempo ──────────────────────────────────────────────────
     if (_isWeatherQuestion(cmd)) {
       AppLogger.info('Weather activado por cmd="$cmd"');
       final resp = await _answerWeather(rawCommand, cmd);
@@ -110,7 +92,7 @@ class VoiceCommands {
       return resp;
     }
 
-    // ── 6. Seguridad y eventos ─────────────────────────────────────────────
+    // ── 4. Seguridad y eventos ─────────────────────────────────────────────
     if (_any(cmd, ['registrar evento', 'nuevo evento', 'reportar'])) {
       final resp = await _registerEvent();
       await ConversationMemoryService.addAssistant(resp, topic: 'seguridad');
@@ -128,14 +110,7 @@ class VoiceCommands {
       return resp;
     }
 
-    // ── 7. Estado del sistema ──────────────────────────────────────────────
-    if (_any(cmd, ['diagnóstico', 'estado del sistema', 'cómo estás', 'estado'])) {
-      final resp = _systemStatus();
-      await ConversationMemoryService.addAssistant(resp, topic: 'sistema');
-      return resp;
-    }
-
-    // ── 8. Emergencia / Cortafuegos ───────────────────────────────────────
+    // ── 5. Emergencia / Cortafuegos ───────────────────────────────────────
     if (_any(cmd, ['activar emergencia', 'protocolo de emergencia']) ||
         (_any(cmd, ['alerta']) && _any(cmd, ['emergencia']))) {
       await EmergencyService.triggerProtocol();
@@ -156,57 +131,7 @@ class VoiceCommands {
       return 'Advertencia: cortafuegos desactivado. Sistema expuesto.';
     }
 
-    // ── 9. Historial de conversación ──────────────────────────────────────
-    if (_any(cmd, ['historial', 'conversaciones guardadas', 'qué hemos hablado',
-        'borrar historial', 'limpiar historial', 'cuánto hemos hablado',
-        'resumen de chat', 'resumen de conversación'])) {
-      return await _handleMemoryCommand(cmd);
-    }
-
-    // ── 10. Dominios de conocimiento especializados ───────────────────────
-    // Reparación de autos / motos / cortagramas / AC / PCs / TVs
-    if (domain == KnowledgeDomain.carRepair ||
-        domain == KnowledgeDomain.motoRepair ||
-        domain == KnowledgeDomain.lawnMower ||
-        domain == KnowledgeDomain.acMaintenance ||
-        domain == KnowledgeDomain.computerRepair ||
-        domain == KnowledgeDomain.tvRepair) {
-      final resp = await _domainAnswer(rawCommand, domain);
-      await ConversationMemoryService.addAssistant(resp, topic: domain.name);
-      return resp;
-    }
-
-    // Medicina / Biología / Fisiología / Nuevos virus
-    if (domain == KnowledgeDomain.medicine ||
-        domain == KnowledgeDomain.biology ||
-        domain == KnowledgeDomain.newViruses) {
-      final resp = await _answerHealth(rawCommand, domain);
-      await ConversationMemoryService.addAssistant(resp, topic: domain.name);
-      return resp;
-    }
-
-    // Cocina / Recetas
-    if (domain == KnowledgeDomain.cooking) {
-      final resp = await _domainAnswer(rawCommand, domain);
-      await ConversationMemoryService.addAssistant(resp, topic: 'cooking');
-      return resp;
-    }
-
-    // Vinos / Licores / Cervezas
-    if (domain == KnowledgeDomain.wines || domain == KnowledgeDomain.beer) {
-      final resp = await _domainAnswer(rawCommand, domain);
-      await ConversationMemoryService.addAssistant(resp, topic: domain.name);
-      return resp;
-    }
-
-    // Política / Ingeniería / Legal / Negocios / Agronomía / Tech / Biblia
-    if (domain != KnowledgeDomain.general) {
-      final resp = await _domainAnswer(rawCommand, domain);
-      await ConversationMemoryService.addAssistant(resp, topic: domain.name);
-      return resp;
-    }
-
-    // ── 11. Navegación ────────────────────────────────────────────────────
+    // ── 6. Navegación ────────────────────────────────────────────────────
     if (_any(cmd, ['waze', 'google maps', 'mapa', 'abrir mapa', 'llévame',
         'navegar', 'ir a', 'a buscar', 'quiero ir']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
@@ -356,52 +281,8 @@ class VoiceCommands {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PELIGROS / TIEMPO REAL
+  // CLIMA
   // ─────────────────────────────────────────────────────────────────────────
-
-  bool _isDangerQuestion(String q) {
-    return _any(q, [
-      'peligro', 'peligros', 'amenaza', 'amenazas', 'riesgo', 'riesgos',
-      'sismo', 'terremoto', 'temblor', 'tsunami', 'volcán', 'volcan',
-      'tormenta cerca', 'huracán cerca', 'inundación', 'desastre',
-      'qué peligros', 'hay peligros', 'estoy en peligro',
-      '500 metros', '1 km', 'cercanías',
-    ]);
-  }
-
-  Future<String> _answerHazards(String cmd) async {
-    final radius = _extractRadius(cmd);
-    // Combina datos locales de DangerCheckService + RealTimeHazardService
-    final local  = await DangerCheckService.assessNearbyDanger(
-        radiusMeters: radius);
-    final full   = await RealTimeHazardService.fullHazardReport(
-        location: AetherisBrain.locationContext);
-    return '$local $full';
-  }
-
-  Future<String> _answerEpidemics(String query) async {
-    final alerts = await RealTimeHazardService.epidemicAlerts(max: 3);
-    if (alerts.isEmpty) {
-      return await KnowledgeDomainService.answer(query,
-          domain: KnowledgeDomain.newViruses);
-    }
-    final buffer = StringBuffer('Alertas epidemiológicas recientes: ');
-    for (final a in alerts) {
-      buffer.write('${a.title}. ');
-    }
-    buffer.write('Fuente: ${alerts.first.source}. ');
-    buffer.write(await KnowledgeDomainService.answer(query,
-        domain: KnowledgeDomain.newViruses));
-    return buffer.toString();
-  }
-
-  int _extractRadius(String q) {
-    final mMt = RegExp(r'(\d+)\s*(metros|mts?|m)\b').firstMatch(q);
-    if (mMt != null) return int.tryParse(mMt.group(1)!) ?? 500;
-    final mKm = RegExp(r'(\d+(?:\.\d+)?)\s*km\b').firstMatch(q);
-    if (mKm != null) return ((double.tryParse(mKm.group(1)!) ?? 0.5) * 1000).toInt();
-    return 500;
-  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // CLIMA
@@ -459,64 +340,6 @@ class VoiceCommands {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SALUD / BIOLOGÍA
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<String> _answerHealth(String question, KnowledgeDomain dom) async {
-    // Para medicina: intentar FDA si hay nombre de medicamento
-    if (dom == KnowledgeDomain.medicine) {
-      final medName = _extractMedName(question);
-      if (medName != null && medName.length > 2) {
-        final fda = await FdaService.getMedicationInfo(medName);
-        if (!fda.startsWith('No encontré') && !fda.startsWith('No hay')) {
-          return fda;
-        }
-      }
-    }
-    return KnowledgeDomainService.answer(question, domain: dom);
-  }
-
-  String? _extractMedName(String q) {
-    final cleaned = q.toLowerCase()
-        .replaceAll(RegExp(r'\b(qué|dime|cuéntame|explícame|información|sobre|para|'
-            r'el|la|medicamento|medicina|pastilla|es|un|una|hay|recomiendas|'
-            r'sirve|usar|tomar)\b', caseSensitive: false), '')
-        .replaceAll(RegExp(r'[¿?¡!.,;:]'), '')
-        .trim();
-    return cleaned.isEmpty ? null : cleaned;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RESPUESTA POR DOMINIO (genérica)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<String> _domainAnswer(
-      String question, KnowledgeDomain domain) async {
-    return KnowledgeDomainService.answer(question, domain: domain);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // MEMORIA / HISTORIAL
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<String> _handleMemoryCommand(String cmd) async {
-    if (_any(cmd, ['borrar historial', 'limpiar historial'])) {
-      await ConversationMemoryService.clearAll();
-      return 'Historial de conversaciones borrado.';
-    }
-    if (_any(cmd, ['resumen', 'cuánto hemos hablado'])) {
-      return await ConversationMemoryService.summary();
-    }
-    final recent = await ConversationMemoryService.recent(limit: 5);
-    if (recent.isEmpty) return 'No hay conversaciones guardadas aún.';
-    final buf = StringBuffer('Últimos mensajes: ');
-    for (final m in recent) {
-      buf.write('${m.isUser ? "Tú" : "Yo"}: ${m.text.substring(0, m.text.length.clamp(0, 60))}. ');
-    }
-    return buf.toString();
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   // EVENTOS DE SEGURIDAD
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -541,23 +364,6 @@ class VoiceCommands {
       buffer.write('${i + 1}. ${logs[i].detectedThreat}. ');
     }
     return buffer.toString();
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // SISTEMA
-  // ─────────────────────────────────────────────────────────────────────────
-
-  String _systemStatus() {
-    final cpu = (AetherisEngine.cpuUsage * 100).toInt();
-    final ram = (AetherisEngine.ramUsage * 100).toInt();
-    final fw  = AetherisEngine.isFirewallActive ? 'activo' : 'desactivado';
-    final own = OwnerGuardService.isRegistered
-        ? (OwnerGuardService.ownerVerified
-            ? '${OwnerGuardService.ownerName} verificado'
-            : 'propietario no verificado en esta sesión')
-        : 'sin propietario registrado';
-    return 'AETHERIS operativo. CPU al $cpu por ciento, '
-        'memoria al $ram por ciento. Cortafuegos $fw. Propietario: $own.';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
