@@ -136,8 +136,7 @@ class VoiceCommands {
         'navegar', 'ir a', 'a buscar', 'quiero ir',
         'donde queda', 'dónde queda', 'donde esta', 'dónde está',
         'donde hay', 'dónde hay', 'ubicación de', 'ubicacion de',
-        'buscar', 'encuentra', 'localiza',
-        'farmacia', 'restaurante', 'taller']) &&
+        'buscar', 'encuentra', 'localiza']) &&
         !_any(cmd, ['perfil', 'análisis', 'seguridad', 'eventos'])) {
       final kbResp = await AetherisLocalBrain.answer(rawCommand);
       if (!_isGenericFallback(kbResp)) {
