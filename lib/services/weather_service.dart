@@ -104,6 +104,41 @@ class WeatherService {
         'Verifica tu conexión a internet o inténtalo de nuevo.';
   }
 
+  /// Detecta si hay precipitaciones o tormentas activas basado en el
+  /// código de condición de OpenWeatherMap:
+  ///   2xx = tormenta eléctrica, 3xx = llovizna, 5xx = lluvia
+  static String? precipitationAlert(Map<String, dynamic> data) {
+    final weather = data['weather'][0];
+    final id = weather['id'] as int? ?? 800;
+    final rain1h = data['rain']?['1h'] as num?;
+    final rain3h = data['rain']?['3h'] as num?;
+
+    if (id >= 200 && id < 300) {
+      return '¡Cuidado! Hay tormentas eléctricas activas en la zona. '
+          'Busca refugio y evita áreas abiertas.';
+    }
+    if (id >= 300 && id < 400) {
+      final vol = rain1h ?? rain3h ?? 0;
+      if (vol > 0) return 'Hay llovizna leve, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      return 'Hay llovizna en la zona.';
+    }
+    if (id >= 500 && id < 510) {
+      final vol = rain1h ?? rain3h ?? 0;
+      if (vol > 10) return '¡Lluvia intensa! ${vol.toStringAsFixed(1)}mm en la última hora. Posibles inundaciones.';
+      if (vol > 5) return 'Lluvia moderada, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      if (vol > 0) return 'Está lloviendo, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      return 'Está lloviendo actualmente.';
+    }
+    if (id >= 510 && id < 600) {
+      return '¡Lluvia muy intensa con posible riesgo de inundaciones! '
+          'Toma precauciones.';
+    }
+    if (id >= 600 && id < 700) {
+      return 'Está nevando.';
+    }
+    return null; // sin precipitaciones
+  }
+
   static String formatWeather(Map<String, dynamic> data) {
     final weather = data['weather'][0];
     final main = data['main'];
@@ -117,11 +152,15 @@ class WeatherService {
     final hum = main['humidity']?.toString() ?? '?';
     final windSpeed = (wind['speed'] as num?)?.toStringAsFixed(1) ?? '?';
 
+    final alert = precipitationAlert(data);
+    final alertText = alert != null ? ' $alert' : '';
+
     return 'Clima en $cityName: $desc. '
         'Temperatura $temp grados, sensación $feels. '
         'Mín $tempMin, máx $tempMax. '
         'Humedad $hum por ciento. '
-        'Viento $windSpeed metros por segundo.';
+        'Viento $windSpeed metros por segundo.'
+        '$alertText';
   }
 }
 
