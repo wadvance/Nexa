@@ -162,7 +162,7 @@ class AetherisVoice {
 
           _partialTimer?.cancel();
           if (_lastResult.split(' ').length >= 2) {
-            _partialTimer = Timer(const Duration(milliseconds: 800), () {
+            _partialTimer = Timer(const Duration(milliseconds: 500), () {
               AppLogger.info('STT parcial estable → entregando "$_lastResult"');
               _deliverResult(_lastResult);
             });
@@ -170,8 +170,8 @@ class AetherisVoice {
         },
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
-          listenFor: const Duration(seconds: 10),
-          pauseFor: const Duration(milliseconds: 800),
+          listenFor: const Duration(seconds: 5),
+          pauseFor: const Duration(milliseconds: 500),
           localeId: localeId,
           cancelOnError: false,
           partialResults: true,
@@ -185,7 +185,7 @@ class AetherisVoice {
     }
 
     final result = await completer.future.timeout(
-      const Duration(seconds: 11),
+      const Duration(seconds: 6),
       onTimeout: () {
         AppLogger.info('STT timeout, entregando "$_lastResult"');
         try { _speech.stop(); } catch (_) {}
@@ -310,7 +310,7 @@ class _WebAetherisVoice extends AetherisVoice {
           }
         } else {
           // Resultado parcial → esperar estabilidad
-          _stabilityTimer = Timer(const Duration(milliseconds: 800), () {
+          _stabilityTimer = Timer(const Duration(milliseconds: 500), () {
             if (_webNextResult != null) {
               _webNextResult!.complete(transcript);
               _webNextResult = null;
@@ -502,7 +502,7 @@ class _WebAetherisVoice extends AetherisVoice {
     _webNextResult = Completer<String>();
     try {
       return await _webNextResult!.future.timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 10),
         onTimeout: () => '',
       );
     } finally {

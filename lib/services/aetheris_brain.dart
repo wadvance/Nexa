@@ -9,7 +9,7 @@ import 'teaching_parser.dart';
 class AetherisBrain {
   static String locationContext = 'Panamá';
 
-  static const int maxTokens = 1500;
+  static const int maxTokens = 800;
 
   static const String _systemPrompt = '''
 Eres AETHERIS, una IA conversacional con conocimiento enciclopédico en TODOS los temas. Hablas en español neutro, con tono natural, cálido y con personalidad, como una amiga experta.
@@ -107,7 +107,7 @@ Ubicación del usuario: {UBICACION}
           'presence_penalty': 0.3,
           'top_p': 0.92,
         }),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 429 && attempt < 2) {
         AppLogger.info('OpenRouter rate limit, reintentando…');
         await Future.delayed(const Duration(seconds: 3));
