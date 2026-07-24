@@ -233,7 +233,16 @@ class VoiceCommands {
       return aiResp;
     }
 
-    // Si la IA falló (429, error de red), devolvemos lo que dijo el cerebro local
+    // Si la IA falló (429, error de red), intentamos navegación como último recurso
+    // para consultas que parezcan de ubicaciones
+    if (_any(cmd, ['farmacia', 'tienda', 'restaurante', 'taller', 'super',
+        'hospital', 'clínica', 'clinica', 'escuela', 'colegio',
+        'parque', 'plaza', 'centro', 'iglesia', 'banco',
+        'metro', 'arrocha', 'machetazo', 'rey', 'kfc', 'mcdonald'])) {
+      return _openNavigation(rawCommand);
+    }
+
+    // Fallback final: respuesta genérica del cerebro local
     await ConversationMemoryService.addAssistant(localResp, topic: 'general');
     return localResp;
   }
