@@ -5,11 +5,16 @@ class KnowledgeBase {
 
   static String? _find(String q) {
     final lq = q.toLowerCase();
-    for (final entry in _entries) {
-      for (final kw in entry.keywords) {
-        if (lq.contains(kw)) return entry.response;
+    print('[KB _find] q="$q" lq="$lq"');
+    for (int i = 0; i < _entries.length; i++) {
+      for (final kw in _entries[i].keywords) {
+        if (lq.contains(kw)) {
+          print('[KB _find] MATCH en entrada #$i kw="$kw" resp="${_entries[i].response.substring(0, _entries[i].response.length.clamp(0, 80))}"');
+          return _entries[i].response;
+        }
       }
     }
+    print('[KB _find] SIN MATCH');
     return null;
   }
 

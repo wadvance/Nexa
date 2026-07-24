@@ -221,29 +221,36 @@ class VoiceCommands {
     // Siempre intentamos con el conocimiento local (rápido, sin red).
     // Si la respuesta es genérica (el KB no tenía el dato), recurrimos a la IA.
     final localResp = await AetherisLocalBrain.answer(rawCommand);
+    print('[DEBUG 14.9] localResp="$localResp"');
+    print('[DEBUG 14.9] isGenericFallback=${_isGenericFallback(localResp)}');
     if (!_isGenericFallback(localResp)) {
       await ConversationMemoryService.addAssistant(localResp, topic: 'general');
       return localResp;
     }
 
     // ── 16. Conversación IA libre (fallback si local no sabe) ─────────────
+    print('[DEBUG 16] Local falló, llamando IA...');
     final aiResp = await _askGemini(rawCommand);
+    print('[DEBUG 16] aiResp="$aiResp"');
     if (aiResp.isNotEmpty) {
       await ConversationMemoryService.addAssistant(aiResp, topic: 'general');
       return aiResp;
     }
 
     // Si la IA falló (429, error de red), intentamos navegación como último recurso
+    print('[DEBUG nav fallback] Intentando navegación...');
     if (_any(cmd, ['farmacia', 'tienda', 'restaurante', 'taller', 'super',
         'supermercado', 'minisuper', 'hospital', 'clínica', 'clinica',
         'escuela', 'colegio', 'parque', 'plaza', 'centro',
         'iglesia', 'banco', 'metro', 'arrocha', 'machetazo',
         'rey', 'kfc', 'mcdonald', 'zapatería', 'zapateria',
         'almacén', 'almacen', 'toyota', 'hyundai', 'honda'])) {
+      print('[DEBUG nav fallback] Match! Abriendo navegación.');
       return _openNavigation(rawCommand);
     }
 
     // Fallback final: respuesta genérica del cerebro local
+    print('[DEBUG fallback final] localResp="$localResp"');
     await ConversationMemoryService.addAssistant(localResp, topic: 'general');
     return localResp;
   }

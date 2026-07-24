@@ -104,6 +104,7 @@ class AetherisLocalBrain {
           'No recomiendo melatonina sin supervisión profesional.';
     }
     if (!q.contains('farmacia') && _any(q, ['medicamento', 'medicina', 'pastilla', 'droga', 'fármaco', 'farmaco'])) {
+      print('[DEBUG local_brain] MEDICAMENTO match! q="$q"');
       return 'Para darte información precisa de un medicamento necesito mi núcleo en la nube. '
           'Mientras tanto: lee siempre el prospecto, respeta la dosis, no mezcles con alcohol '
           'y consulta a tu médico o farmacéutico. ¿Cuál medicamento específicamente?';
