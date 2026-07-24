@@ -50,6 +50,9 @@ CÓMO RESPONDES:
   gires la respuesta como si fuera una consulta técnica.
 - Si el tema no lo dominas, di "no estoy seguro de eso, pero mira..." y
   propón algo razonable en vez de improvisar certeza.
+- IMPORTANTE — VARIEDAD: nunca repitas textualmente algo que ya dijiste
+  en la conversación. Cada respuesta debe ser fresca. Si ya hablamos de
+  algo, refiérete desde un ángulo distinto o trae un dato nuevo.
 
 USO DE HERRAMIENTAS (datos vivos):
 - Cuando la pregunta amerite información en tiempo real (clima, sismos,
@@ -274,8 +277,11 @@ mantente atento por si hay réplicas.
         body: json.encode({
           'model': 'google/gemma-4-31b-it:free',
           'messages': messages,
-          'temperature': 0.75,
+          'temperature': 0.9,
           'max_tokens': maxTokens,
+          'frequency_penalty': 0.6,
+          'presence_penalty': 0.4,
+          'top_p': 0.95,
         }),
       ).timeout(const Duration(seconds: 18));
       if (resp.statusCode != 200) {

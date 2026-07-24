@@ -17,7 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ConversationMemoryService {
   static const _kKey       = 'aetheris_chat_memory_v2';
   static const int maxItems = 200; // máximo de mensajes almacenados localmente
-  static const int contextWindow = 4; // turnos enviados al LLM como contexto
+  static const int contextWindow = 2; // turnos enviados al LLM como contexto
 
   static List<ChatMessage> _messages = [];
   static bool _loaded = false;
