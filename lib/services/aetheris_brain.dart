@@ -178,9 +178,15 @@ EJEMPLOS RÁPIDOS:
     }
 
     final history = await ConversationMemoryService.llmContext();
+    // La pregunta actual ya se pasa como mensaje 'user' aparte,
+    // así que quitamos el último mensaje de usuario del historial
+    // si coincide (evita que la pregunta llegue duplicada al modelo).
+    final filteredHistory = history.isNotEmpty && history.last['content'] == question
+        ? history.sublist(0, history.length - 1)
+        : history;
     final baseMessages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemContent.toString()},
-      ...history.map((m) => {'role': m['role'], 'content': m['content']}),
+      ...filteredHistory.map((m) => {'role': m['role'], 'content': m['content']}),
     ];
 
     AppLogger.info('ReAct → "${_truncate(question)}"');
@@ -297,9 +303,9 @@ EJEMPLOS RÁPIDOS:
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'google/gemma-4-31b-it:free',
+          'model': 'openrouter/free',
           'messages': messages,
-          'temperature': 0.85,
+          'temperature': 0.65,
           'max_tokens': maxTokens,
           'frequency_penalty': 0.5,
           'presence_penalty': 0.3,
