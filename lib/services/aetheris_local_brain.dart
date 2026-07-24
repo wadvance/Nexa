@@ -1,4 +1,5 @@
 import 'time_service.dart';
+import 'knowledge_base.dart';
 
 /// Cerebro local de AETHERIS (sin red).
 ///
@@ -126,9 +127,8 @@ class AetherisLocalBrain {
           'exhala 4. Si necesitas apoyo profesional, busca ayuda cercana; tu bienestar importa.';
     }
 
-    // Respuesta genérica empática (sin preguntar "sobre qué quieres hablar").
-    return 'Cuéntame un poco más. ¿Me das más detalles o el tema es '
-        'libre? Converso sobre cualquier cosa que tengas en mente.';
+    // Buscar en la base de conocimiento general
+    return KnowledgeBase.fallback(rawQuestion);
   }
 
   static bool _any(String q, List<String> keys) =>
