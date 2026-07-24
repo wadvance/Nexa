@@ -162,12 +162,12 @@ class _HomeScreenState extends State<HomeScreen>
       }
       if (!mounted) break;
       // Pausa para evitar que el micrófono capte el eco de la propia voz
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) break;
       _syncVoiceState();
 
       if (!_voice.sttReady) {
-        await Future.delayed(const Duration(seconds: 1));
+        await Future.delayed(const Duration(milliseconds: 500));
         continue;
       }
 
@@ -179,20 +179,20 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) break;
 
       if (texto.isEmpty || texto.length < 3) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 100));
         continue;
       }
       // Ignorar palabras sueltas que son probablemente eco
       final trimmed = texto.trim().toLowerCase();
       if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 100));
         continue;
       }
       // Ignorar si el texto transcrito es un eco de la última respuesta
       if (_lastResponse.isNotEmpty) {
         final respLower = _lastResponse.toLowerCase();
         if (respLower.contains(trimmed) && trimmed.length > 4) {
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
       }

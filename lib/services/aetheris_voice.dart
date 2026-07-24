@@ -162,7 +162,7 @@ class AetherisVoice {
 
           _partialTimer?.cancel();
           if (_lastResult.split(' ').length >= 2) {
-            _partialTimer = Timer(const Duration(milliseconds: 500), () {
+            _partialTimer = Timer(const Duration(milliseconds: 300), () {
               AppLogger.info('STT parcial estable → entregando "$_lastResult"');
               _deliverResult(_lastResult);
             });
@@ -171,7 +171,7 @@ class AetherisVoice {
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.confirmation,
           listenFor: const Duration(seconds: 5),
-          pauseFor: const Duration(milliseconds: 500),
+          pauseFor: const Duration(milliseconds: 300),
           localeId: localeId,
           cancelOnError: false,
           partialResults: true,
@@ -310,7 +310,7 @@ class _WebAetherisVoice extends AetherisVoice {
           }
         } else {
           // Resultado parcial → esperar estabilidad
-          _stabilityTimer = Timer(const Duration(milliseconds: 500), () {
+          _stabilityTimer = Timer(const Duration(milliseconds: 300), () {
             if (_webNextResult != null) {
               _webNextResult!.complete(transcript);
               _webNextResult = null;
@@ -430,7 +430,7 @@ class _WebAetherisVoice extends AetherisVoice {
         AppLogger.info('WebSpeech onend (speak stop)');
         if (!ended.isCompleted) ended.complete();
       }).toJS;
-      await ended.future.timeout(const Duration(seconds: 2), onTimeout: () {});
+      await ended.future.timeout(const Duration(milliseconds: 500), onTimeout: () {});
     }
     _state = VoiceState.speaking;
     final completer = Completer<void>();
@@ -442,7 +442,7 @@ class _WebAetherisVoice extends AetherisVoice {
       if (!completer.isCompleted) completer.complete();
     }).toJS;
     _synth!.speak(_utterance);
-    await completer.future.timeout(const Duration(seconds: 15), onTimeout: () {});
+    await completer.future.timeout(const Duration(seconds: 8), onTimeout: () {});
     _state = VoiceState.idle;
     // Reanudar STT (onend ya ocurrió, start() no debería fallar)
     if (wasActive) {
