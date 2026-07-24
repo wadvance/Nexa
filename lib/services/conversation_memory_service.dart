@@ -17,7 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ConversationMemoryService {
   static const _kKey       = 'aetheris_chat_memory_v2';
   static const int maxItems = 200; // máximo de mensajes almacenados localmente
-  static const int contextWindow = 2; // turnos enviados al LLM como contexto
+  static const int contextWindow = 1; // turnos enviados al LLM como contexto
 
   static List<ChatMessage> _messages = [];
   static bool _loaded = false;
@@ -85,14 +85,20 @@ class ConversationMemoryService {
     return _messages.sublist(start);
   }
 
-  /// Últimos [contextWindow] turnos formateados para enviar al LLM.
+  /// Últimos [contextWindow] mensajes del usuario (sin las respuestas del AI)
+  /// formateados para enviar al LLM. Si el AI ve sus propias respuestas, las
+  /// repite. Por eso filtramos: solo contexto del usuario.
   /// Devuelve lista de maps [{role, content}].
   static Future<List<Map<String, String>>> llmContext() async {
     await load();
     if (_messages.isEmpty) return [];
-    final window = _messages.length > contextWindow
-        ? _messages.sublist(_messages.length - contextWindow)
-        : List<ChatMessage>.from(_messages);
+    // Solo mensajes del usuario (excluir respuestas del AI para evitar mimesis)
+    final userMsgs = _messages.where((m) => m.role == 'user').toList();
+    if (userMsgs.isEmpty) return [];
+    final take = userMsgs.length > contextWindow
+        ? contextWindow
+        : userMsgs.length;
+    final window = userMsgs.sublist(userMsgs.length - take);
     return window.map((m) => {'role': m.role, 'content': m.text}).toList();
   }
 
