@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AETHERIS Chrome (Web)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=OPENROUTER_API_KEY=\${OPENROUTER_API_KEY}",
+        "--dart-define=FIREBASE_API_KEY=\${FIREBASE_API_KEY}"
+      ]
+    },
+    {
+      "name": "AETHERIS Chrome (Release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "release",
+      "args": [
+        "--dart-define=OPENROUTER_API_KEY=\${OPENROUTER_API_KEY}",
+        "--dart-define=FIREBASE_API_KEY=\${FIREBASE_API_KEY}"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+name: Build and Deploy Flutter Web to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  ACTIONS_STEP_DEBUG: true
+
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY || '' }}
+  WEATHER_CORS_PROXY: ${{ secrets.WEATHER_CORS_PROXY || '' }}
+  FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || '' }}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENWEATHERMAP_API_KEY: ${{ secrets.OPENWEATHERMAP_API_KEY || '' }}
+      WEATHER_CORS_PROXY: ${{ secrets.WEATHER_CORS_PROXY || '' }}
+    steps:
+      - name: Print environment summary
+        shell: bash
+        run: |
+          echo "=== RUNTIME INFO ==="
+          echo "Runner: $RUNNER_OS / $RUNNER_ARCH"
+          echo "Node: $(node --version 2>&1 || echo 'no node')"
+          echo "OS info:"
+          cat /etc/os-release | head -5
+          echo "=== SECRETS SANITY ==="
+          echo "OPENROUTER_API_KEY length: ${#OPENROUTER_API_KEY}"
+          echo "OPENWEATHERMAP_API_KEY length: ${#OPENWEATHERMAP_API_KEY}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter 3.44.7
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
+
+      - name: Enable web
+        shell: bash
+        run: flutter config --enable-web
+
+      - name: Verify Flutter/Dart
+        shell: bash
+        run: flutter --version && dart --version
+
+      - name: Get dependencies
+        shell: bash
+        run: flutter pub get
+
+      - name: Verify secrets
+        shell: bash
+        run: |
+          if [ -z "${OPENROUTER_API_KEY}" ]; then
+            echo "FATAL: OPENROUTER_API_KEY secret empty"
+            exit 1
+          fi
+          if [ -z "${FIREBASE_API_KEY}" ]; then
+            echo "WARN: FIREBASE_API_KEY secret empty (Firebase auth may not work on web)"
+          fi
+          echo "Secrets OK (openrouter length=${#OPENROUTER_API_KEY})"
+
+      - name: Create legacy .env for pubspec asset (local runs only)
+        shell: bash
+        run: |
+          # Aunque ahora no lo usamos en web (usamos --dart-define),
+          # lo dejamos por si algún día se necesita en modo debug.
+          mkdir -p assets
+          cat > .env <<EOF
+          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+          EOF
+          cp .env assets/.env
+          echo "Legacy .env created"
+
+      - name: Build web (--dart-define for secrets)
+        shell: bash
+        run: >
+          flutter build web --release --base-href /Nexa/
+          --dart-define=FLUTTER_WEB_USE_SKIA=true
+          --dart-define=OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+          --dart-define=OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+          --dart-define=WEATHER_CORS_PROXY=${WEATHER_CORS_PROXY}
+          --dart-define=FIREBASE_API_KEY=${FIREBASE_API_KEY}
+
+      - name: Inspect build/web
+        shell: bash
+        run: |
+          echo "=== build/web listing ==="
+          ls -la build/web
+          echo "=== copying 404.html ==="
+          cp build/web/index.html build/web/404.html
+          ls -la build/web/404.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

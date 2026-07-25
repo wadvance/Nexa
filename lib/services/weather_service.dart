@@ -1,0 +1,172 @@
+import 'dart:convert';
+import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+
+class WeatherService {
+  static String get _apiKey {
+    final de = dotenv.env['OPENWEATHERMAP_API_KEY'];
+    if (de != null && de.isNotEmpty) return de;
+    return const String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+  }
+
+  static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
+
+  /// Proxy CORS para entornos web (GitHub Pages).
+  /// corsproxy.io usa formato: ?url=ENCODED_URL
+  /// Se configura via --dart-define=WEATHER_CORS_PROXY=<url>, ejemplo:
+  ///   --dart-define=WEATHER_CORS_PROXY="https://corsproxy.io/?url="
+  static String? get _corsProxy {
+    const v = String.fromEnvironment('WEATHER_CORS_PROXY');
+    if (v.isNotEmpty) return v;
+    return kIsWeb ? 'https://corsproxy.io/?url=' : null;
+  }
+
+  static void _log(String msg) {
+    dev.log('WeatherService: $msg', name: 'WeatherService');
+  }
+
+  static Future<Map<String, dynamic>?> _makeRequest(String url) async {
+    try {
+      final target = _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(url)}' : url;
+      _log('GET $target');
+      final response = await http.get(Uri.parse(target)).timeout(
+        const Duration(seconds: 10),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      _log('HTTP ${response.statusCode}');
+      return null;
+    } catch (e) {
+      _log('error: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getWeather(String city) async {
+    final encoded = Uri.encodeComponent(city);
+    return _makeRequest('$_baseUrl?q=$encoded&appid=$_apiKey&units=metric&lang=es');
+  }
+
+  static Future<Map<String, dynamic>?> getWeatherByCoords(double lat, double lon) async {
+    return _makeRequest('$_baseUrl?lat=$lat&lon=$lon&appid=$_apiKey&units=metric&lang=es');
+  }
+
+  /// Alias compatible con location_service_web.dart
+  static Future<Map<String, dynamic>?> fetch(double lat, double lon) {
+    return getWeatherByCoords(lat, lon);
+  }
+
+  /// Obtiene y formatea el clima de una ciudad específica.
+  /// Devuelve mensaje amable si falla (incluido CORS en web).
+  static Future<String> formatCityWeather(String city) async {
+    final data = await getWeather(city);
+    if (data == null) {
+      return _fallbackMessage(city);
+    }
+    return formatWeather(data);
+  }
+
+  static Future<String> currentOrDefault() async {
+    // En web, saltar geolocator (el plugin web tiene problemas con permisos)
+    if (!kIsWeb) {
+      try {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          await Geolocator.requestPermission();
+        }
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 8),
+        );
+        final data = await getWeatherByCoords(position.latitude, position.longitude);
+        if (data != null) return formatWeather(data);
+      } catch (e) {
+        _log('geolocation failed: $e');
+      }
+    }
+
+    // Fallback: Panamá por defecto (el usuario está en Panamá)
+    final data = await getWeather('Panama');
+    if (data == null) {
+      return _fallbackMessage('tu ubicación');
+    }
+    return formatWeather(data);
+  }
+
+  /// Mensaje amable si la API falla (CORS, sin internet, etc.)
+  static String _fallbackMessage(String where) {
+    return 'No pude consultar el clima de $where en este momento. '
+        'Verifica tu conexión a internet o inténtalo de nuevo.';
+  }
+
+  /// Detecta si hay precipitaciones o tormentas activas basado en el
+  /// código de condición de OpenWeatherMap:
+  ///   2xx = tormenta eléctrica, 3xx = llovizna, 5xx = lluvia
+  static String? precipitationAlert(Map<String, dynamic> data) {
+    final weather = data['weather'][0];
+    final id = weather['id'] as int? ?? 800;
+    final rain1h = data['rain']?['1h'] as num?;
+    final rain3h = data['rain']?['3h'] as num?;
+
+    if (id >= 200 && id < 300) {
+      return '¡Cuidado! Hay tormentas eléctricas activas en la zona. '
+          'Busca refugio y evita áreas abiertas.';
+    }
+    if (id >= 300 && id < 400) {
+      final vol = rain1h ?? rain3h ?? 0;
+      if (vol > 0) return 'Hay llovizna leve, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      return 'Hay llovizna en la zona.';
+    }
+    if (id >= 500 && id < 510) {
+      final vol = rain1h ?? rain3h ?? 0;
+      if (vol > 10) return '¡Lluvia intensa! ${vol.toStringAsFixed(1)}mm en la última hora. Posibles inundaciones.';
+      if (vol > 5) return 'Lluvia moderada, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      if (vol > 0) return 'Está lloviendo, ${vol.toStringAsFixed(1)}mm en la última hora.';
+      return 'Está lloviendo actualmente.';
+    }
+    if (id >= 510 && id < 600) {
+      return '¡Lluvia muy intensa con posible riesgo de inundaciones! '
+          'Toma precauciones.';
+    }
+    if (id >= 600 && id < 700) {
+      return 'Está nevando.';
+    }
+    return null; // sin precipitaciones
+  }
+
+  static String formatWeather(Map<String, dynamic> data) {
+    final weather = data['weather'][0];
+    final main = data['main'];
+    final wind = data['wind'];
+    final cityName = data['name']?.toString() ?? 'tu ubicación';
+    final desc = weather['description']?.toString().capitalize() ?? 'desconocido';
+    final temp = (main['temp'] as num?)?.toStringAsFixed(1) ?? '?';
+    final feels = (main['feels_like'] as num?)?.toStringAsFixed(1) ?? '?';
+    final tempMin = (main['temp_min'] as num?)?.toStringAsFixed(1) ?? '?';
+    final tempMax = (main['temp_max'] as num?)?.toStringAsFixed(1) ?? '?';
+    final hum = main['humidity']?.toString() ?? '?';
+    final windSpeed = (wind['speed'] as num?)?.toStringAsFixed(1) ?? '?';
+
+    final alert = precipitationAlert(data);
+    final alertText = alert != null ? ' $alert' : '';
+
+    return 'Clima en $cityName: $desc. '
+        'Temperatura $temp grados, sensación $feels. '
+        'Mín $tempMin, máx $tempMax. '
+        'Humedad $hum por ciento. '
+        'Viento $windSpeed metros por segundo.'
+        '$alertText';
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return this[0].toUpperCase() + substring(1);
+  }
+}
