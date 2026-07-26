@@ -361,53 +361,66 @@ class VoiceCommands {
       // Para preguntas de lluvia, siempre usar pronóstico (forecast)
       final useForecast = isForecast || isRainQuestion;
       if (city != null && city.length > 2) {
-        weatherResp = useForecast
-            ? await WeatherService.formatForecast(city)
-            : await WeatherService.formatCityWeather(city);
+        weatherResp = await useForecast
+            ? await WeatherService.formatForecast(city).timeout(const Duration(seconds: 8))
+            : await WeatherService.formatCityWeather(city).timeout(const Duration(seconds: 8));
       } else {
-        weatherResp = useForecast
-            ? await WeatherService.forecastOrDefault()
-            : await WeatherService.currentOrDefault();
+        weatherResp = await useForecast
+            ? await WeatherService.forecastOrDefault().timeout(const Duration(seconds: 8))
+            : await WeatherService.currentOrDefault().timeout(const Duration(seconds: 8));
       }
       if (weatherResp.startsWith('No encontré') || weatherResp.startsWith('No pude')) {
         weatherResp = null;
       }
     } catch (e) {
-      AppLogger.error('Weather API error: $e');
+      AppLogger.error('Weather API error/timeout: $e');
       weatherResp = null;
     }
 
+    // Fallback rápido si falla la API
+    if (weatherResp == null) {
+      weatherResp = 'No pude obtener el clima ahora. Intenta de nuevo más tarde.';
+    }
+
     // Para preguntas específicas de lluvia, usar IA para interpretar datos
-    if (isRainQuestion && weatherResp != null) {
+    if (isRainQuestion && weatherResp != null && !weatherResp.contains('No pude')) {
       AppLogger.info('Weather: rain question, using AI to interpret');
-      final aiResp = await _askGemini(
-          'El usuario pregunta: "$raw". '
-          'Datos meteorológicos actuales de $cityLabel: $weatherResp. '
-          'Basándote en estos datos, responde de forma directa y corta (1-2 oraciones) '
-          'si va a llover hoy o no, con probabilidad y horario aproximado si es posible.',
-          domain: KnowledgeDomain.general);
-      if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
-        return aiResp;
+      try {
+        final aiResp = await _askGemini(
+            'El usuario pregunta: "$raw". '
+            'Datos meteorológicos actuales de $cityLabel: $weatherResp. '
+            'Basándote en estos datos, responde de forma directa y corta (1-2 oraciones) '
+            'si va a llover hoy o no, con probabilidad y horario aproximado si es posible.',
+            domain: KnowledgeDomain.general).timeout(const Duration(seconds: 10));
+        if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
+          return aiResp;
+        }
+      } catch (e) {
+        AppLogger.error('AI weather interpretation timeout: $e');
       }
       // Si la IA falló, devolver los datos crudos
       return weatherResp;
     }
 
-    // Si la API funcionó, devolver
-    if (weatherResp != null) return weatherResp;
-
-    // Fallback: pedir a la IA que dé el pronóstico
-    AppLogger.info('Weather: API failed, falling back to AI');
-    final tipo = (isForecast || isRainQuestion) ? 'pronóstico del tiempo' : 'clima actual';
-    final aiResp = await _askGemini(
-        '¿Cuál es el $tipo en $cityLabel ahora mismo? '
-        'Si preguntan por lluvia, indica si hay probabilidad de precipitación. '
-        'Responde en una oración corta con temperatura aproximada y condición del tiempo.',
-        domain: KnowledgeDomain.general);
-    if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
-      return 'Según mis datos, $aiResp';
+    // Fallback: si la API falló, usar IA directamente con timeout
+    if (weatherResp == null || weatherResp.contains('No pude')) {
+      try {
+        AppLogger.info('Weather: API failed, falling back to AI');
+        final tipo = (isForecast || isRainQuestion) ? 'pronóstico del tiempo' : 'clima actual';
+        final aiResp = await _askGemini(
+            '¿Cuál es el $tipo en $cityLabel ahora mismo? '
+            'Si preguntan por lluvia, indica si hay probabilidad de precipitación. '
+            'Responde en una oración corta con temperatura aproximada y condición del tiempo.',
+            domain: KnowledgeDomain.general).timeout(const Duration(seconds: 10));
+        if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
+          return 'Según mis datos, $aiResp';
+        }
+      } catch (e) {
+        AppLogger.error('AI weather fallback timeout: $e');
+      }
+      return 'No pude obtener el clima de $cityLabel en este momento. Verifica tu conexión.';
     }
-    return 'No pude obtener el clima de $cityLabel en este momento. Verifica tu conexión.';
+    return weatherResp;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
