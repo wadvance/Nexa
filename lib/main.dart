@@ -11,6 +11,7 @@ import 'services/owner_guard_service.dart';
 import 'services/conversation_memory_service.dart';
 import 'services/notification_service.dart';
 import 'services/proactive_context_service.dart';
+import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/auth/auth_gate.dart';
 import 'presentation/screens/voice_test_screen.dart';
 
@@ -117,7 +118,7 @@ class _AetherisAppState extends State<AetherisApp> {
         future: _initFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const _SplashScreen();
+            return const AetherisSplashScreen();
           }
           if (snapshot.hasError) {
             return _ErrorScreen(error: snapshot.error.toString());
@@ -128,31 +129,6 @@ class _AetherisAppState extends State<AetherisApp> {
       routes: {
         '/voice-test': (_) => const VoiceTestScreen(),
       },
-    );
-  }
-}
-
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF121212),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.deepPurpleAccent),
-            SizedBox(height: 20),
-            Text('AETHERIS',
-                style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 24,
-                    letterSpacing: 6)),
-          ],
-        ),
-      ),
     );
   }
 }
