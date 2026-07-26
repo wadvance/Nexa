@@ -102,8 +102,6 @@ class WebAetherisVoice extends AetherisVoice {
           AppLogger.info('WebSpeech onend: restarting (still active)');
           try { _webSpeech!.start(); } catch (e2) {
             AppLogger.error('WebSpeech onend restart: $e2');
-            _webSttActive = false;
-            voiceState = VoiceState.idle;
           }
         }
       }).toJS;
