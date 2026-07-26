@@ -296,7 +296,7 @@ Ubicación del usuario: {UBICACION}
       AppLogger.info('API key found via dart-define (${fromEnv.length} chars)');
       return fromEnv;
     }
-    AppLogger.error('NO API KEY FOUND');
+    AppLogger.error('NO API KEY FOUND - check --dart-define or GitHub secret');
     return null;
   }
 

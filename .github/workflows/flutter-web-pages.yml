@@ -75,19 +75,6 @@ jobs:
           fi
           echo "Secrets OK (openrouter length=${#OPENROUTER_API_KEY})"
 
-      - name: Create legacy .env for pubspec asset (local runs only)
-        shell: bash
-        run: |
-          # Aunque ahora no lo usamos en web (usamos --dart-define),
-          # lo dejamos por si algún día se necesita en modo debug.
-          mkdir -p assets
-          cat > .env <<EOF
-          OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-          OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
-          EOF
-          cp .env assets/.env
-          echo "Legacy .env created"
-
       - name: Build web (--dart-define for secrets)
         shell: bash
         run: >
@@ -97,6 +84,11 @@ jobs:
           --dart-define=OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
           --dart-define=WEATHER_CORS_PROXY=${WEATHER_CORS_PROXY}
           --dart-define=FIREBASE_API_KEY=${FIREBASE_API_KEY}
+
+      - name: Verify key in build
+        shell: bash
+        run: |
+          echo "Key length passed: ${#OPENROUTER_API_KEY}"
 
       - name: Inspect build/web
         shell: bash

@@ -36,10 +36,12 @@ void main() {
 }
 
 Future<void> initServices() async {
-  try {
-    await dotenv.load(fileName: ".env").timeout(const Duration(seconds: 5));
-  } catch (e) {
-    dev.log('dotenv load error: $e');
+  if (!kIsWeb) {
+    try {
+      await dotenv.load(fileName: ".env").timeout(const Duration(seconds: 5));
+    } catch (e) {
+      dev.log('dotenv load error: $e');
+    }
   }
 
   try {
