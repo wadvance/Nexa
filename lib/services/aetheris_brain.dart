@@ -283,11 +283,20 @@ Ubicación del usuario: {UBICACION}
         dotenv.env['openrouter_api_key'],
       ];
       for (final k in candidates) {
-        if (k != null && k.trim().isNotEmpty) return k.trim();
+        if (k != null && k.trim().isNotEmpty) {
+          AppLogger.info('API key found via dotenv (${k.length} chars)');
+          return k.trim();
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.error('dotenv read error: $e');
+    }
     const fromEnv = String.fromEnvironment('OPENROUTER_API_KEY');
-    if (fromEnv.isNotEmpty) return fromEnv;
+    if (fromEnv.isNotEmpty) {
+      AppLogger.info('API key found via dart-define (${fromEnv.length} chars)');
+      return fromEnv;
+    }
+    AppLogger.error('NO API KEY FOUND');
     return null;
   }
 
