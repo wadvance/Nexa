@@ -375,28 +375,9 @@ Ubicación del usuario: {UBICACION}
         },
       ).timeout(const Duration(seconds: 10));
 
+      if (resp.statusCode != 200) return '';
+
       final body = resp.body;
-      final results = <String>[];
-
-      // Extraer títulos y snippets de los resultados
-      final titlePattern = RegExp(r'class="result__a"[^>]*>(.*?)</a>', dotAll: true);
-      final snippetPattern = RegExp(r'class="result__snippet"[^>]*>(.*?)</[^>]+>', dotAll: true);
-
-      final titles = titlePattern.allMatches(body);
-      final snippets = snippetPattern.allMatches(body);
-
-      for (var i = 0; i < titles.length.clamp(0, 3); i++) {
-        final title = titles.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? '';
-        final snippet = i < snippets.length
-            ? snippets.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? ''
-            : '';
-        if (title.isNotEmpty) {
-          results.add('$title: $snippet');
-        }
-      }
-
-      if (results.isEmpty) return '';
-      return 'Resultados de búsqueda:\n${results.join('\n\n')}';
       final results = <String>[];
 
       // Extraer títulos y snippets de los resultados
