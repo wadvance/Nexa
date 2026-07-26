@@ -138,8 +138,8 @@ class _HomeScreenState extends State<HomeScreen>
       _chatHistory.add(ChatMessage(role: 'bot', text: respuesta));
       // Garantizar que SIEMPRE hable algo — si la IA devuelve vacío,
       // dar una respuesta empática para que el usuario sepa que estoy aquí.
-      if (respuesta.trim().isEmpty) {
-        respuesta = 'No te escuché bien. ¿Podrías repetirlo?';
+      if (respuesta.trim().isEmpty || respuesta.trim() == ' ') {
+        respuesta = 'No pude procesar tu pregunta. Intenta de nuevo.';
       }
       await _voice.speak(respuesta);
       _syncVoiceState();

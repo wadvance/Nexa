@@ -228,8 +228,6 @@ class VoiceCommands {
 
     // ── 16. Conversación IA libre (fallback si local no sabe) ─────────────
     AppLogger.debug('[DEBUG 16] Local falló, llamando IA...');
-    // Decir al usuario que está buscando mientras espera
-    await _voice.speak('Déjame buscar esa información.');
     final aiResp = await _askGemini(rawCommand, domain: domain);
     AppLogger.debug('[DEBUG 16] aiResp="$aiResp"');
     if (aiResp.isNotEmpty) {

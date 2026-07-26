@@ -256,10 +256,15 @@ Ubicación del usuario: {UBICACION}
       final data = json.decode(resp.body) as Map<String, dynamic>;
       final choices = data['choices'] as List?;
       if (choices == null || choices.isEmpty) {
-        AppLogger.error('OpenRouter: sin choices en respuesta');
+        AppLogger.error('OpenRouter: sin choices en respuesta. Body: ${resp.body}');
         return '';
       }
-      return _stripMarkdown((choices.first as Map)['message']?['content']?.toString().trim() ?? '');
+      final content = (choices.first as Map)['message']?['content']?.toString().trim() ?? '';
+      AppLogger.info('OpenRouter response length: ${content.length} chars');
+      if (content.isEmpty) {
+        AppLogger.error('OpenRouter: content vacío. Choices: $choices');
+      }
+      return _stripMarkdown(content);
     } catch (e) {
       AppLogger.error('OpenRouter error: $e');
       if (attempt < 3) {
