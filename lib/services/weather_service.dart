@@ -14,15 +14,9 @@ class WeatherService {
 
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
-  /// Proxy CORS para entornos web (GitHub Pages).
-  /// corsproxy.io usa formato: ?url=ENCODED_URL
-  /// Se configura via --dart-define=WEATHER_CORS_PROXY=<url>, ejemplo:
-  ///   --dart-define=WEATHER_CORS_PROXY="https://corsproxy.io/?url="
-  static String? get _corsProxy {
-    const v = String.fromEnvironment('WEATHER_CORS_PROXY');
-    if (v.isNotEmpty) return v;
-    return kIsWeb ? 'https://corsproxy.io/?url=' : null;
-  }
+  /// OpenWeatherMap soporta CORS nativamente (Access-Control-Allow-Origin: *),
+  /// así que no se necesita proxy en web.
+  static String? get _corsProxy => null;
 
   static void _log(String msg) {
     dev.log('WeatherService: $msg', name: 'WeatherService');
