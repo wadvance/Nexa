@@ -153,6 +153,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted || _looping) return;
     _looping = true;
 
+    int sttNotReadyCount = 0;
+
     while (mounted && !_muted) {
       try {
         // Esperar a que el TTS termine
@@ -167,10 +169,21 @@ class _HomeScreenState extends State<HomeScreen>
         _syncVoiceState();
 
         if (!_voice.sttReady) {
-          AppLogger.warn('Loop: STT not ready, waiting...');
+          sttNotReadyCount++;
+          AppLogger.warn('Loop: STT not ready (count: $sttNotReadyCount), waiting...');
+          if (sttNotReadyCount >= 5) {
+            AppLogger.info('Loop: Attempting STT re-initialization...');
+            final success = await _voice.reinitializeStt();
+            if (!success) {
+              AppLogger.error('Loop: STT re-initialization failed');
+            }
+            sttNotReadyCount = 0;
+          }
           await Future.delayed(const Duration(milliseconds: 500));
           continue;
         }
+
+        sttNotReadyCount = 0;
 
         if (kIsWeb && !_voice.listening) {
           await _voice.startContinuous();

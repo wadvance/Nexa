@@ -64,24 +64,52 @@ class AetherisVoice {
       AppLogger.error('TTS error: $msg');
     });
 
-    try {
-      await _speech.initialize(
-        onError: (e) {
-          AppLogger.error('STT error: ${e.errorMsg}');
-          // No entregamos aquí — esperamos al timeout
-        },
-        onStatus: (s) {
-          AppLogger.info('STT status: $s');
-          // Ignoramos 'notListening' y 'done' — no entregamos resultado
-          // El resultado se entrega SOLO por timeout o por el loop principal
-        },
-        debugLogging: false,
-      );
-    } catch (e) {
-      AppLogger.error('STT init: $e');
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await _speech.initialize(
+          onError: (e) {
+            AppLogger.error('STT error: ${e.errorMsg}');
+          },
+          onStatus: (s) {
+            AppLogger.info('STT status: $s');
+          },
+          debugLogging: false,
+        );
+        if (_speech.isAvailable) {
+          AppLogger.info('STT initialized successfully on attempt $attempt');
+          break;
+        }
+        AppLogger.warn('STT initialized but not available, retrying... (attempt $attempt)');
+        await Future.delayed(const Duration(seconds: 1));
+      } catch (e) {
+        AppLogger.error('STT init attempt $attempt failed: $e');
+        await Future.delayed(const Duration(seconds: 1));
+      }
     }
-
     AppLogger.info('=== VOICE READY sttReady=$sttReady ===');
+  }
+
+  /// Re-inicializa el STT si no está disponible
+  Future<bool> reinitializeStt() async {
+    AppLogger.info('Re-inicializando STT...');
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await _speech.initialize(
+          onError: (e) => AppLogger.error('STT error: ${e.errorMsg}'),
+          onStatus: (s) => AppLogger.info('STT status: $s'),
+          debugLogging: false,
+        );
+        if (_speech.isAvailable) {
+          AppLogger.info('STT re-initialized successfully on attempt $attempt');
+          return true;
+        }
+        await Future.delayed(const Duration(seconds: 1));
+      } catch (e) {
+        AppLogger.error('STT re-init attempt $attempt failed: $e');
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    return false;
   }
 
   Future<void> _selectSpanishVoice() async {
