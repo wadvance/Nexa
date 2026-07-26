@@ -318,6 +318,10 @@ class VoiceCommands {
 
   Future<String> _answerWeather(String raw, String cmd) async {
     AppLogger.info('Weather: raw="$raw" cmd="$cmd"');
+    // Detectar si pregunta por mañana
+    final isForecast = RegExp(r'mañana|manana|pr[oó]xim[oa]|el pr[oó]ximo|pasado\s*mañana',
+        caseSensitive: false).hasMatch(cmd);
+
     // Buscar preposiciones en el comando en MAYÚSCULAS (no en minúsculas).
     // rawCommand viene tal cual se escuchó.
     final prepsRaw = [
@@ -334,7 +338,7 @@ class VoiceCommands {
         city = raw.substring(idx + prep.length).trim()
             .replaceAll(RegExp(r'¿'), '')
             .replaceAll(RegExp(r'\?$|^\?'), '')
-            .replaceAll(RegExp(r'\b(hoy|mañana|ahora|actual|este mes|allá|alla|alli)\b',
+            .replaceAll(RegExp(r'\b(hoy|mañana|ahora|actual|este mes|allá|alla|alli|el pronostico|el tiempo|el clima)\b',
             caseSensitive: false), '')
             .trim();
         // Limpiar palabras sobrantes al final
@@ -342,23 +346,30 @@ class VoiceCommands {
         if (city.isNotEmpty) break;
       }
     }
-    AppLogger.info('Weather: detected city="$city"');
+    AppLogger.info('Weather: detected city="$city" isForecast=$isForecast');
     if (city != null && city.length > 2) {
       try {
-        final resp = await WeatherService.formatCityWeather(city);
+        final resp = isForecast
+            ? await WeatherService.formatForecast(city)
+            : await WeatherService.formatCityWeather(city);
         AppLogger.info('Weather: city response="${resp.substring(0, resp.length.clamp(0, 60))}…"');
         if (resp.startsWith('No encontré') || resp.startsWith('No pude')) {
-          // Si la ciudad no se encontró, intentar con ubicación actual
-          return await WeatherService.currentOrDefault();
+          return isForecast
+              ? await WeatherService.forecastOrDefault()
+              : await WeatherService.currentOrDefault();
         }
         return resp;
       } catch (e) {
         AppLogger.error('Weather city error: $e');
-        return await WeatherService.currentOrDefault();
+        return isForecast
+            ? await WeatherService.forecastOrDefault()
+            : await WeatherService.currentOrDefault();
       }
     }
     try {
-      final geo = await WeatherService.currentOrDefault();
+      final geo = isForecast
+          ? await WeatherService.forecastOrDefault()
+          : await WeatherService.currentOrDefault();
       AppLogger.info('Weather: geo response="${geo.substring(0, geo.length.clamp(0, 60))}…"');
       return geo;
     } catch (e) {
@@ -496,6 +507,8 @@ class VoiceCommands {
       'tormenta', 'huracan', 'hurac', 'tifon', 'ciclon', 'cicl',
       'grad', 'centigrad', 'celsius', 'kelvin',
       'prevision', 'prevision del tiempo',
+      'pronostico', 'pronostico del tiempo', 'pronostico para',
+      'mañana', 'manana',
       'nevar', 'nieve', 'graniza', 'granizo',
       'meteo', 'meteorolog',
       'reporte del clima',
@@ -514,7 +527,7 @@ class VoiceCommands {
     const words = <String>[
       'clima', 'tiempo', 'temperatura', 'lluvia', 'llover', 'llueve',
       'pronost', 'tormenta', 'huracan', 'calor', 'frio', 'fria',
-      'nublado', 'soleado', 'nevar', 'meteo',
+      'nublado', 'soleado', 'nevar', 'meteo', 'mañana',
     ];
     for (final tok in tokens) {
       for (final w in words) {

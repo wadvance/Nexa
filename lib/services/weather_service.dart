@@ -15,6 +15,7 @@ class WeatherService {
   }
 
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
+  static const String _forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast';
 
   /// OpenWeatherMap soporta CORS nativamente (Access-Control-Allow-Origin: *),
   /// así que no se necesita proxy en web.
@@ -65,6 +66,127 @@ class WeatherService {
       return _fallbackMessage(city);
     }
     return formatWeather(data);
+  }
+
+  static Future<Map<String, dynamic>?> getForecast(String city) async {
+    final encoded = Uri.encodeComponent(city);
+    return _makeRequest('$_forecastUrl?q=$encoded&appid=$_apiKey&units=metric&lang=es&cnt=40');
+  }
+
+  static Future<Map<String, dynamic>?> getForecastByCoords(double lat, double lon) async {
+    return _makeRequest('$_forecastUrl?lat=$lat&lon=$lon&appid=$_apiKey&units=metric&lang=es&cnt=40');
+  }
+
+  static Future<String> formatForecast(String city) async {
+    final data = await getForecast(city);
+    if (data == null) return _fallbackMessage(city);
+    return _summarizeForecast(data, city);
+  }
+
+  static Future<String> forecastOrDefault() async {
+    if (!kIsWeb) {
+      try {
+        final permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          await Geolocator.requestPermission();
+        }
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 8),
+        );
+        final data = await getForecastByCoords(position.latitude, position.longitude);
+        if (data != null) return _summarizeForecast(data, data['city']?['name'] ?? 'tu ubicación');
+      } catch (e) {
+        _log('forecast geolocation failed: $e');
+      }
+    }
+    final data = await getForecast('Panama');
+    if (data == null) return _fallbackMessage('tu ubicación');
+    return _summarizeForecast(data, 'Panamá');
+  }
+
+  static String _summarizeForecast(Map<String, dynamic> data, String cityName) {
+    final list = data['list'] as List? ?? [];
+    if (list.isEmpty) return 'No pude obtener el pronóstico.';
+
+    // Filtrar entries de mañana (aprox entre 24h y 48h desde ahora)
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final dayAfter = DateTime(now.year, now.month, now.day + 2);
+
+    final tomorrowEntries = list.where((entry) {
+      final dt = DateTime.parse(entry['dt_txt'] as String);
+      return dt.isAfter(tomorrow.subtract(const Duration(hours: 1))) &&
+             dt.isBefore(dayAfter);
+    }).toList();
+
+    if (tomorrowEntries.isEmpty) {
+      // Si no hay datos exactos de mañana, tomar los próximos entries
+      return _formatNextEntries(list, cityName);
+    }
+
+    // Resumen de mañana
+    double tempMin = 999, tempMax = -999;
+    double totalRain = 0;
+    int rainCount = 0;
+    int thunderCount = 0;
+    final conditions = <String>{};
+
+    for (final entry in tomorrowEntries) {
+      final main = entry['main'];
+      final temp = (main['temp'] as num?)?.toDouble() ?? 0;
+      final tMin = (main['temp_min'] as num?)?.toDouble() ?? temp;
+      final tMax = (main['temp_max'] as num?)?.toDouble() ?? temp;
+      if (tMin < tempMin) tempMin = tMin;
+      if (tMax > tempMax) tempMax = tMax;
+
+      final weather = (entry['weather'] as List?)?.first;
+      final id = weather?['id'] as int? ?? 800;
+      final desc = weather?['description']?.toString() ?? '';
+      if (desc.isNotEmpty) conditions.add(desc);
+
+      if (id >= 200 && id < 300) thunderCount++;
+      if (id >= 300 && id < 700) rainCount++;
+
+      final rain3h = entry['rain']?['3h'] as num?;
+      if (rain3h != null) totalRain += rain3h.toDouble();
+    }
+
+    final parts = <String>[];
+    parts.add('Pronóstico para mañana en $cityName:');
+
+    if (tempMin < 999) {
+      parts.add('Temperatura entre ${tempMin.toStringAsFixed(0)} y ${tempMax.toStringAsFixed(0)} grados.');
+    }
+
+    if (thunderCount > 0) {
+      parts.add('Se esperan tormentas eléctricas. Toma precauciones.');
+    } else if (totalRain > 10) {
+      parts.add('Lluvia fuerte esperada, aproximadamente ${totalRain.toStringAsFixed(0)} milímetros.');
+    } else if (totalRain > 2) {
+      parts.add('Lluvia moderada esperada, aproximadamente ${totalRain.toStringAsFixed(0)} milímetros.');
+    } else if (rainCount > 0) {
+      parts.add('Posibilidad de lluvia leve.');
+    } else {
+      parts.add('Sin lluvia esperada.');
+    }
+
+    if (conditions.isNotEmpty) {
+      parts.add('Condiciones: ${conditions.first}.');
+    }
+
+    return parts.join(' ');
+  }
+
+  static String _formatNextEntries(List list, String cityName) {
+    final entries = list.length > 4 ? list.sublist(0, 4) : list;
+    final summary = entries.map((e) {
+      final dt = e['dt_txt']?.toString().substring(5, 16) ?? '';
+      final desc = (e['weather'] as List?)?.first?['description'] ?? '';
+      final temp = (e['main']?['temp'] as num?)?.toStringAsFixed(0) ?? '?';
+      return '$dt: $desc, $temp grados';
+    }).join('. ');
+    return 'Pronóstico cercano para $cityName: $summary.';
   }
 
   static Future<String> currentOrDefault() async {
