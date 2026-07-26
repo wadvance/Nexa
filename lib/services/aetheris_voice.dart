@@ -174,13 +174,13 @@ class AetherisVoice {
         listenOptions: stt.SpeechListenOptions(
           // confirmation: el motor decide cuándo terminó la frase.
           // filterProfanity: false → pasamos palabras tal cual.
-          listenMode: stt.ListenMode.confirmation,
-          // Auto-stop de la sesión escucha tras 30 s (por si la
+          listenMode: stt.ListenMode.dictation,
+          // Auto-stop de la sesión escucha tras 45 s (por si la
           // persona habla mucho sin hacer una pausa grande).
-          listenFor: const Duration(seconds: 30),
-          // 3 segundos de silencio = fin del turno. Inmuniza contra
-          // ruido de fondo, respiraciones largas y pausas naturales.
-          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 45),
+          // 5 segundos de silencio = fin del turno. Da tiempo al usuario
+          // para pensar y hablar sin ser interrumpido.
+          pauseFor: const Duration(seconds: 5),
           localeId: localeId,
           cancelOnError: false,
           partialResults: true,
