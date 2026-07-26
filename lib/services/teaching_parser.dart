@@ -77,7 +77,7 @@ class TeachingParser {
         final hasNotName = notNameWords.any((w) => lower.contains(w));
         if (!hasNotName) {
           await UserMemoryService.setFact('nombre', t.trim());
-          return (handled: true, reply: 'Encantado, ${t.trim()}. ¿Qué te gusta hacer?');
+          return (handled: true, reply: 'Gracias, ${t.trim()}. ¿Qué te gusta hacer?');
         }
       }
     }

@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
       if (!mounted) break;
       // Pausa para evitar que el micrófono capte el eco de la propia voz
-      await Future.delayed(const Duration(milliseconds: 1200));
+      await Future.delayed(const Duration(milliseconds: 2000));
       if (!mounted) break;
       _syncVoiceState();
 
