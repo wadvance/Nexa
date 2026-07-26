@@ -9,7 +9,7 @@ import 'teaching_parser.dart';
 class AetherisBrain {
   static String locationContext = 'Panamá';
 
-  static const int maxTokens = 700;
+  static const int maxTokens = 400;
 
   /// Claude 3.5 Sonnet de Anthropic
   static String? _anthropicApiKey;
@@ -71,12 +71,14 @@ PASO 4 — Didáctica multifacética: cuando una pregunta toque varias áreas, i
 
 === SEGURIDAD Y ÉTICA ===
 
+- CRÍTICO: NO uses markdown, asteriscos, negritas, viñetas, ni formato de ningún tipo. Escribe en texto PLANO porque tu respuesta se lee por voz (TTS). Ejemplo MAL: "**La bachata** es un género... - Se originó...". Ejemplo BIEN: "La bachata es un género musical que se originó...".
 - En temas de salud: aclara que es orientación general, no sustituye la consulta profesional; nunca recetes de forma definitiva.
 - En temas legales: orienta pero recomienda consultar abogado.
 - En finanzas: recomienda contador/asesor certificado para decisiones importantes.
 - En hacking/ciberseguridad: solo ética y defensa.
 - Honesto: si no sabes, dilo y ofrece la mejor información general disponible.
 - Idiomático: responde en el mismo idioma que el usuario está usando en su consulta. Si escribe en inglés, responde en inglés. Si mezcla, mantén su idioma dominante.
+- Responde de forma CONCISA y DIRECTA. Máximo 3-4 oraciones salvo que el usuario pida más detalle.
 
 Ubicación del usuario: {UBICACION}
 {MEMORIA}
@@ -232,7 +234,7 @@ Ubicación del usuario: {UBICACION}
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'google/gemma-2-9b-it:free',
+          'model': 'qwen/qwen-2-7b-instruct:free',
           'messages': messages,
           'temperature': 0.65,
           'max_tokens': maxTokens,
@@ -257,7 +259,7 @@ Ubicación del usuario: {UBICACION}
         AppLogger.error('OpenRouter: sin choices en respuesta');
         return '';
       }
-      return (choices.first as Map)['message']?['content']?.toString().trim() ?? '';
+      return _stripMarkdown((choices.first as Map)['message']?['content']?.toString().trim() ?? '');
     } catch (e) {
       AppLogger.error('OpenRouter error: $e');
       if (attempt < 3) {
@@ -298,6 +300,36 @@ Ubicación del usuario: {UBICACION}
 
   static String _truncate(String s, [int n = 160]) =>
       s.length <= n ? s : '${s.substring(0, n)}…';
+
+  /// Elimina formateo markdown de un texto para que suene bien al TTS.
+  static String _stripMarkdown(String text) {
+    var s = text;
+    // Negrita: **texto** o __texto__
+    s = s.replaceAll(RegExp(r'\*\*(.+?)\*\*'), r'$1');
+    s = s.replaceAll(RegExp(r'__(.+?)__'), r'$1');
+    // Cursiva: *texto* o _texto_
+    s = s.replaceAll(RegExp(r'\*(.+?)\*'), r'$1');
+    s = s.replaceAll(RegExp(r'(?<!\w)_(.+?)_(?!\w)'), r'$1');
+    // Strikethrough: ~~texto~~
+    s = s.replaceAll(RegExp(r'~~(.+?)~~'), r'$1');
+    // Código inline: `texto`
+    s = s.replaceAll(RegExp(r'`(.+?)`'), r'$1');
+    // Viñetas con guión o asterisco
+    s = s.replaceAll(RegExp(r'^[\-\*]\s+', multiLine: true), '');
+    // Numeradas
+    s = s.replaceAll(RegExp(r'^\d+\.\s+', multiLine: true), '');
+    // Headers
+    s = s.replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '');
+    // Links [texto](url)
+    s = s.replaceAll(RegExp(r'\[(.+?)\]\(.+?\)'), r'$1');
+    // Imágenes ![alt](url)
+    s = s.replaceAll(RegExp(r'!\[(.+?)\]\(.+?\)'), r'$1');
+    // Líneas horizontales
+    s = s.replaceAll(RegExp(r'^-{3,}$', multiLine: true), '');
+    // Limpiar líneas vacías múltiples
+    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return s.trim();
+  }
 
   /// Detección simple y rápida del idioma probable del usuario.
   static String detectUserLanguage(String text) {
