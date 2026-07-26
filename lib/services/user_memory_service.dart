@@ -175,6 +175,8 @@ class UserMemoryService {
     if (facts.isEmpty && top.isEmpty && ex.isEmpty) {
       buf.writeln('Sin datos aún. Sé proactivo: pregunta al dueño su nombre, '
           'sus intereses y anímalo a enseñarte con ejemplos.');
+    } else if (!facts.containsKey('nombre')) {
+      buf.writeln('Aún no conoces el nombre del dueño. Pregunta su nombre de forma natural.');
     }
     return buf.toString();
   }

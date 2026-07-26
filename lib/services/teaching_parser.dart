@@ -35,14 +35,27 @@ class TeachingParser {
 
     // ── 2) Nombre del dueño ──────────────────────────────────────────────
     final nameRe = RegExp(
-      r'^(?:me llamo|mi nombre es|yo soy|ll[aá]mame|me dicen)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,40})$',
+      r'^(?:me llamo|mi nombre es|yo soy|soy|ll[aá]mame|me dicen|puedes llamarme|decirme)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,40})$',
       caseSensitive: false,
     );
     final nameMatch = nameRe.firstMatch(t);
     if (nameMatch != null) {
       final name = nameMatch.group(1)!.trim();
       await UserMemoryService.setFact('nombre', name);
-      return (handled: true, reply: 'Entendido, te llamas $name.');
+      return (handled: true, reply: 'Entendido, te llamas $name. ¿Qué te gusta hacer, $name?');
+    }
+
+    // Si el usuario responde solo con un nombre corto (1-2 palabras, sin preguntas)
+    // y no hay otros keywords, asumir que es su nombre
+    if (t.length >= 2 && t.length <= 30 && !t.contains('?') && !t.contains('!')) {
+      final isName = RegExp(r'^[A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,30}$').hasMatch(t);
+      if (isName) {
+        final hasQuestionWords = RegExp(r'(cuál|cómo|qué|dónde|cuándo|cuánto|por qué|quién|puedes|quiero|dame|dime|ayuda|habla|cuenta|explica|busca|abre|activa|desactiva|pon|quita|sube|baja)').hasMatch(lower);
+        if (!hasQuestionWords) {
+          await UserMemoryService.setFact('nombre', t.trim());
+          return (handled: true, reply: 'Encantado, ${t.trim()}. ¿Qué te gusta hacer?');
+        }
+      }
     }
 
     // ── 3) "Recuerda que X" / "no olvides que X" ─────────────────────────
@@ -57,6 +70,21 @@ class TeachingParser {
       final key = 'hecho_${DateTime.now().millisecondsSinceEpoch}';
       await UserMemoryService.setFact(key, '$keyBase — $fact');
       return (handled: true, reply: 'Anotado: "$fact". Lo recordaré.');
+    }
+
+    // ── 3.5) Preferencias: "me gusta X", "me encanta X", etc ───────────────
+    final likeRe = RegExp(
+      r'^(?:me gusta|me encanta|me molesta|odio|mi favorit[oa] es?|prefiero|amo|disfruto)\s+(.+)$',
+      caseSensitive: false,
+    );
+    final likeMatch = likeRe.firstMatch(t);
+    if (likeMatch != null) {
+      final pref = likeMatch.group(1)!.trim();
+      final allFacts = await UserMemoryService.allFacts();
+      final gustos = allFacts['gustos'] ?? '';
+      final newGustos = gustos.isEmpty ? pref : '$gustos, $pref';
+      await UserMemoryService.setFact('gustos', newGustos);
+      return (handled: true, reply: 'Entendido. Me anoto que te gusta $pref.');
     }
 
     // ── 4) Borrar memoria: "olvida X" / "borra memoria" ──────────────────
