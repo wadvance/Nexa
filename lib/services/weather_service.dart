@@ -115,7 +115,9 @@ class WeatherService {
     final dayAfter = DateTime(now.year, now.month, now.day + 2);
 
     final tomorrowEntries = list.where((entry) {
-      final dt = DateTime.parse(entry['dt_txt'] as String);
+      final dtTxt = (entry['dt_txt'] as String? ?? '').replaceAll(' ', 'T');
+      final dt = DateTime.tryParse(dtTxt);
+      if (dt == null) return false;
       return dt.isAfter(tomorrow.subtract(const Duration(hours: 1))) &&
              dt.isBefore(dayAfter);
     }).toList();
@@ -181,10 +183,10 @@ class WeatherService {
   static String _formatNextEntries(List list, String cityName) {
     final entries = list.length > 4 ? list.sublist(0, 4) : list;
     final summary = entries.map((e) {
-      final dt = e['dt_txt']?.toString().substring(5, 16) ?? '';
+      final dtTxt = (e['dt_txt']?.toString() ?? '').substring(5, 16);
       final desc = (e['weather'] as List?)?.first?['description'] ?? '';
       final temp = (e['main']?['temp'] as num?)?.toStringAsFixed(0) ?? '?';
-      return '$dt: $desc, $temp grados';
+      return '$dtTxt: $desc, $temp grados';
     }).join('. ');
     return 'Pronóstico cercano para $cityName: $summary.';
   }
