@@ -17,26 +17,20 @@ class WeatherService {
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
   static const String _forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast';
 
-  /// OpenWeatherMap soporta CORS nativamente (Access-Control-Allow-Origin: *),
-  /// así que no se necesita proxy en web.
-  static String? get _corsProxy => null;
-
   static void _log(String msg) {
     dev.log('WeatherService: $msg', name: 'WeatherService');
   }
 
   static Future<Map<String, dynamic>?> _makeRequest(String url) async {
     try {
-      final target = _corsProxy != null ? '$_corsProxy${Uri.encodeComponent(url)}' : url;
-      _log('GET $target');
-      final response = await http.get(Uri.parse(target)).timeout(
-        const Duration(seconds: 10),
+      _log('GET $url');
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 15),
       );
-
+      _log('HTTP ${response.statusCode}');
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
-      _log('HTTP ${response.statusCode}');
       return null;
     } catch (e) {
       _log('error: $e');
@@ -53,13 +47,10 @@ class WeatherService {
     return _makeRequest('$_baseUrl?lat=$lat&lon=$lon&appid=$_apiKey&units=metric&lang=es');
   }
 
-  /// Alias compatible con location_service_web.dart
   static Future<Map<String, dynamic>?> fetch(double lat, double lon) {
     return getWeatherByCoords(lat, lon);
   }
 
-  /// Obtiene y formatea el clima de una ciudad específica.
-  /// Devuelve mensaje amable si falla (incluido CORS en web).
   static Future<String> formatCityWeather(String city) async {
     final data = await getWeather(city);
     if (data == null) {
@@ -109,7 +100,6 @@ class WeatherService {
     final list = data['list'] as List? ?? [];
     if (list.isEmpty) return 'No pude obtener el pronóstico.';
 
-    // Filtrar entries de mañana (aprox entre 24h y 48h desde ahora)
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final dayAfter = DateTime(now.year, now.month, now.day + 2);
@@ -123,11 +113,9 @@ class WeatherService {
     }).toList();
 
     if (tomorrowEntries.isEmpty) {
-      // Si no hay datos exactos de mañana, tomar los próximos entries
       return _formatNextEntries(list, cityName);
     }
 
-    // Resumen de mañana
     double tempMin = 999, tempMax = -999;
     double totalRain = 0;
     int rainCount = 0;
@@ -192,7 +180,6 @@ class WeatherService {
   }
 
   static Future<String> currentOrDefault() async {
-    // En web, saltar geolocator (el plugin web tiene problemas con permisos)
     if (!kIsWeb) {
       try {
         final permission = await Geolocator.checkPermission();
@@ -210,7 +197,6 @@ class WeatherService {
       }
     }
 
-    // Fallback: Panamá por defecto (el usuario está en Panamá)
     final data = await getWeather('Panama');
     if (data == null) {
       return _fallbackMessage('tu ubicación');
@@ -218,15 +204,11 @@ class WeatherService {
     return formatWeather(data);
   }
 
-  /// Mensaje amable si la API falla (CORS, sin internet, etc.)
   static String _fallbackMessage(String where) {
     return 'No pude consultar el clima de $where en este momento. '
         'Verifica tu conexión a internet o inténtalo de nuevo.';
   }
 
-  /// Detecta si hay precipitaciones o tormentas activas basado en el
-  /// código de condición de OpenWeatherMap:
-  ///   2xx = tormenta eléctrica, 3xx = llovizna, 5xx = lluvia
   static String? precipitationAlert(Map<String, dynamic> data) {
     final weather = data['weather'][0];
     final id = weather['id'] as int? ?? 800;
@@ -256,7 +238,7 @@ class WeatherService {
     if (id >= 600 && id < 700) {
       return 'Está nevando.';
     }
-    return null; // sin precipitaciones
+    return null;
   }
 
   static String formatWeather(Map<String, dynamic> data) {

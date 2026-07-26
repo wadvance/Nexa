@@ -382,7 +382,6 @@ class VoiceCommands {
     }
     return 'No pude obtener el clima de $cityLabel en este momento. Verifica tu conexión.';
   }
-  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // EVENTOS DE SEGURIDAD
