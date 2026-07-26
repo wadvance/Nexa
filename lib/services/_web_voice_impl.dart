@@ -243,12 +243,18 @@ class WebAetherisVoice extends AetherisVoice {
       if (!completer.isCompleted) completer.complete();
     }).toJS;
     _utterance.onerror = (() {
-      if (!completer.isCompleted) completer.complete();
+      // No completar en error — dejar que el timeout maneje casos borde
+      AppLogger.warn('WebTTS onerror');
     }).toJS;
     _synth!.speak(_utterance);
-    await completer.future.timeout(const Duration(seconds: 8), onTimeout: () {});
+    // Timeout generoso: textos largos pueden tardar 30+ segundos en TTS
+    await completer.future.timeout(const Duration(seconds: 60), onTimeout: () {
+      AppLogger.warn('WebTTS timeout (60s)');
+    });
+    _utterance.onend = null;
+    _utterance.onerror = null;
     voiceState = VoiceState.idle;
-    // Reanudar STT (onend ya ocurrió, start() no debería fallar)
+    // Reanudar STT
     if (wasActive) {
       _webPendingResults.clear();
       _accumFinal = '';
