@@ -232,7 +232,7 @@ Ubicación del usuario: {UBICACION}
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+          'model': 'google/gemma-2-9b-it:free',
           'messages': messages,
           'temperature': 0.65,
           'max_tokens': maxTokens,
@@ -241,11 +241,11 @@ Ubicación del usuario: {UBICACION}
           'top_p': 0.92,
           'stream': false,
         }),
-      ).timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 429 && attempt < 2) {
+      ).timeout(const Duration(seconds: 25));
+      if (resp.statusCode == 429 && attempt < 3) {
         AppLogger.info('OpenRouter rate limit, reintentando…');
-        await Future.delayed(const Duration(seconds: 3));
-        return _callOpenRouter(key, messages, attempt: 2);
+        await Future.delayed(const Duration(seconds: 2));
+        return _callOpenRouter(key, messages, attempt: attempt + 1);
       }
       if (resp.statusCode != 200) {
         AppLogger.error('OpenRouter HTTP ${resp.statusCode}: ${resp.body}');
@@ -260,10 +260,10 @@ Ubicación del usuario: {UBICACION}
       return (choices.first as Map)['message']?['content']?.toString().trim() ?? '';
     } catch (e) {
       AppLogger.error('OpenRouter error: $e');
-      if (attempt < 2) {
+      if (attempt < 3) {
         AppLogger.info('Reintentando tras error…');
         await Future.delayed(const Duration(seconds: 2));
-        return _callOpenRouter(key, messages, attempt: 2);
+        return _callOpenRouter(key, messages, attempt: attempt + 1);
       }
       return '';
     }
