@@ -50,8 +50,32 @@ class TeachingParser {
     if (t.length >= 2 && t.length <= 30 && !t.contains('?') && !t.contains('!')) {
       final isName = RegExp(r'^[A-Za-zÁÉÍÓÚáéíóúñÑ ]{2,30}$').hasMatch(t);
       if (isName) {
-        final hasQuestionWords = RegExp(r'(cuál|cómo|qué|dónde|cuándo|cuánto|por qué|quién|puedes|quiero|dame|dime|ayuda|habla|cuenta|explica|busca|abre|activa|desactiva|pon|quita|sube|baja)').hasMatch(lower);
-        if (!hasQuestionWords) {
+        // Si contiene palabras que NO son de nombre, no es un nombre
+        final notNameWords = [
+          'hable', 'hablar', 'habla', 'significa', 'qué', 'que', 'como', 'cómo',
+          'cuando', 'cuándo', 'donde', 'dónde', 'por qué', 'porque',
+          'cuanto', 'cuánto', 'cuales', 'cuáles', 'quien', 'quién',
+          'puedes', 'quiero', 'dame', 'dime', 'ayuda', 'cuenta', 'explica',
+          'busca', 'buscar', 'abre', 'activa', 'desactiva', 'sobre', 'acerca',
+          'opinión', 'opinion', 'piensas', 'crees', 'información', 'noticia',
+          'historia', 'ciencia', 'salud', 'medicina', 'comida', 'receta',
+          'música', 'musica', 'deporte', 'juego', 'película', 'pelicula',
+          'país', 'pais', 'ciudad', 'lugar', 'trabajo', 'escuela', 'tecnología',
+          'tecnologia', 'internet', 'computadora', 'celular', 'auto', 'casa',
+          'familia', 'amor', 'vida', 'religión', 'religion', 'política', 'politica',
+          'gobierno', 'ley', 'dinero', 'banco', 'médico', 'medico', 'doctor',
+          'farmacia', 'hospital', 'empresa', 'negocio', 'producto', 'servicio',
+          'tienda', 'mercado', 'restaurante', 'hotel', 'playa', 'montaña', 'montana',
+          'ciudad', 'parque', 'iglesia', 'escuela', 'sol', 'luna', 'estrella',
+          'agua', 'fuego', 'tierra', 'aire', 'animal', 'perro', 'gato', 'planta',
+          'tabaco', 'lectura', 'significado', 'significar', 'definición', 'definicion',
+          'ejemplo', 'diferencia', 'ventaja', 'desventaja', 'beneficio', 'uso',
+          'origen', 'historia', 'característica', 'caracteristica', 'propiedad',
+          'efecto', 'causa', 'consecuencia', 'método', 'metodo', 'técnica', 'tecnica',
+          'proceso', 'pasos', 'instrucciones', 'tutorial', 'curso', 'clase',
+        ];
+        final hasNotName = notNameWords.any((w) => lower.contains(w));
+        if (!hasNotName) {
           await UserMemoryService.setFact('nombre', t.trim());
           return (handled: true, reply: 'Encantado, ${t.trim()}. ¿Qué te gusta hacer?');
         }
