@@ -228,6 +228,8 @@ class VoiceCommands {
 
     // ── 16. Conversación IA libre (fallback si local no sabe) ─────────────
     AppLogger.debug('[DEBUG 16] Local falló, llamando IA...');
+    // Decir al usuario que está buscando mientras espera
+    await _voice.speak('Déjame buscar esa información.');
     final aiResp = await _askGemini(rawCommand, domain: domain);
     AppLogger.debug('[DEBUG 16] aiResp="$aiResp"');
     if (aiResp.isNotEmpty) {
@@ -560,6 +562,15 @@ class VoiceCommands {
       'Es un tema amplio.',
       'Normalmente hay múltiples factores.',
       'Es un tema interesante.',
+      'Investiga fuentes confiables',
+      'La respuesta exacta requiere',
+      'Dame más detalles',
+      'te daré una respuesta más',
+      'Depende del contexto',
+      'identificar la causa raíz',
+      'Cuéntame más contexto',
+      'Tengo información general',
+      'dime exactamente qué aspecto',
     ];
     for (final prefix in genericStarts) {
       if (resp.startsWith(prefix)) return true;

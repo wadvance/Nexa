@@ -9,7 +9,7 @@ import 'teaching_parser.dart';
 class AetherisBrain {
   static String locationContext = 'Panamá';
 
-  static const int maxTokens = 400;
+  static const int maxTokens = 500;
 
   /// Claude 3.5 Sonnet de Anthropic
   static String? _anthropicApiKey;
