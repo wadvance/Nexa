@@ -369,7 +369,7 @@ class VoiceCommands {
             ? await WeatherService.forecastOrDefault()
             : await WeatherService.currentOrDefault();
       }
-      if (weatherResp != null && (weatherResp.startsWith('No encontré') || weatherResp.startsWith('No pude'))) {
+      if (weatherResp.startsWith('No encontré') || weatherResp.startsWith('No pude')) {
         weatherResp = null;
       }
     } catch (e) {
