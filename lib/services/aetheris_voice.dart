@@ -33,6 +33,8 @@ class AetherisVoice {
   String _lastResult = '';
   Completer<String>? _activeCompleter;
   Timer? _partialTimer;
+  DateTime _lastSpeechTime = DateTime.now();
+  Duration _speechDuration = Duration.zero;
 
   VoiceState get state => voiceState;
   set state(VoiceState value) => voiceState = value;
@@ -142,6 +144,8 @@ class AetherisVoice {
 
   Future<String> _doListen() async {
     _lastResult = '';
+    _lastSpeechTime = DateTime.now();
+    _speechDuration = Duration.zero;
     voiceState = VoiceState.listening;
 
     final completer = Completer<String>();
@@ -156,31 +160,30 @@ class AetherisVoice {
         onResult: (r) {
           final words = r.recognizedWords.trim();
           if (words.isNotEmpty) {
+            final now = DateTime.now();
+            _speechDuration = now.difference(_lastSpeechTime);
             _lastResult = words;
-            AppLogger.info('STT "$words" final=${r.finalResult}');
+            _lastSpeechTime = now;
+            AppLogger.info('STT "$words" final=${r.finalResult} dur=${_speechDuration.inSeconds}s');
           }
 
           if (r.finalResult) {
+            // Si el usuario apenas lleva menos de 2 segundos hablando,
+            // ignorar el finalResult y seguir escuchando
+            if (_speechDuration.inSeconds < 2 && _lastResult.split(' ').length < 4) {
+              AppLogger.info('STT: finalResult prematuro, ignorando...');
+              return;
+            }
             _deliverResult(_lastResult);
             return;
           }
 
-          // Mientras el usuario habla, sólo actualizamos _lastResult.
-          // NO entregamos por parciales prematuros: el resultado sólo
-          // debe salir tras 3 s de silencio (handled por el fallback
-          // basado en 'pauseFor' más abajo).
           _partialTimer?.cancel();
         },
         listenOptions: stt.SpeechListenOptions(
-          // confirmation: el motor decide cuándo terminó la frase.
-          // filterProfanity: false → pasamos palabras tal cual.
           listenMode: stt.ListenMode.dictation,
-          // Auto-stop de la sesión escucha tras 45 s (por si la
-          // persona habla mucho sin hacer una pausa grande).
-          listenFor: const Duration(seconds: 45),
-          // 5 segundos de silencio = fin del turno. Da tiempo al usuario
-          // para pensar y hablar sin ser interrumpido.
-          pauseFor: const Duration(seconds: 5),
+          listenFor: const Duration(seconds: 60),
+          pauseFor: const Duration(seconds: 8),
           localeId: localeId,
           cancelOnError: false,
           partialResults: true,
