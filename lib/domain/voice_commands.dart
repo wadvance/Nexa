@@ -318,8 +318,15 @@ class VoiceCommands {
 
   Future<String> _answerWeather(String raw, String cmd) async {
     AppLogger.info('Weather: raw="$raw" cmd="$cmd"');
-    // Detectar si pregunta por mañana
+
+    // Detectar si pregunta por mañana o por pronóstico futuro
     final isForecast = RegExp(r'mañana|manana|pr[oó]xim[oa]|el pr[oó]ximo|pasado\s*mañana',
+        caseSensitive: false).hasMatch(cmd);
+
+    // Detectar preguntas específicas sobre lluvia/precipitación
+    final isRainQuestion = RegExp(
+        r'lluv|llover|llueve|llovio|llovia|cae.*lluv|va.*llover|'
+        r'precipit|got|chaparr|agua.*caer|se.*moja|paragu',
         caseSensitive: false).hasMatch(cmd);
 
     // Buscar preposiciones en el comando en MAYÚSCULAS (no en minúsculas).
@@ -344,17 +351,21 @@ class VoiceCommands {
         if (city.isNotEmpty) break;
       }
     }
-    AppLogger.info('Weather: detected city="$city" isForecast=$isForecast');
+    AppLogger.info('Weather: detected city="$city" isForecast=$isForecast isRainQuestion=$isRainQuestion');
+
+    final cityLabel = city?.isNotEmpty == true ? city : 'Panamá';
 
     // Intentar API de OpenWeatherMap
     String? weatherResp;
     try {
+      // Para preguntas de lluvia, siempre usar pronóstico (forecast)
+      final useForecast = isForecast || isRainQuestion;
       if (city != null && city.length > 2) {
-        weatherResp = isForecast
+        weatherResp = useForecast
             ? await WeatherService.formatForecast(city)
             : await WeatherService.formatCityWeather(city);
       } else {
-        weatherResp = isForecast
+        weatherResp = useForecast
             ? await WeatherService.forecastOrDefault()
             : await WeatherService.currentOrDefault();
       }
@@ -366,15 +377,31 @@ class VoiceCommands {
       weatherResp = null;
     }
 
+    // Para preguntas específicas de lluvia, usar IA para interpretar datos
+    if (isRainQuestion && weatherResp != null) {
+      AppLogger.info('Weather: rain question, using AI to interpret');
+      final aiResp = await _askGemini(
+          'El usuario pregunta: "$raw". '
+          'Datos meteorológicos actuales de $cityLabel: $weatherResp. '
+          'Basándote en estos datos, responde de forma directa y corta (1-2 oraciones) '
+          'si va a llover hoy o no, con probabilidad y horario aproximado si es posible.',
+          domain: KnowledgeDomain.general);
+      if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
+        return aiResp;
+      }
+      // Si la IA falló, devolver los datos crudos
+      return weatherResp;
+    }
+
     // Si la API funcionó, devolver
     if (weatherResp != null) return weatherResp;
 
     // Fallback: pedir a la IA que dé el pronóstico
     AppLogger.info('Weather: API failed, falling back to AI');
-    final cityLabel = city?.isNotEmpty == true ? city : 'Panamá';
-    final tipo = isForecast ? 'pronóstico para mañana' : 'clima actual';
+    final tipo = (isForecast || isRainQuestion) ? 'pronóstico del tiempo' : 'clima actual';
     final aiResp = await _askGemini(
         '¿Cuál es el $tipo en $cityLabel ahora mismo? '
+        'Si preguntan por lluvia, indica si hay probabilidad de precipitación. '
         'Responde en una oración corta con temperatura aproximada y condición del tiempo.',
         domain: KnowledgeDomain.general);
     if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
