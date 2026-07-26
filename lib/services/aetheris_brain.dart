@@ -373,7 +373,7 @@ Ubicación del usuario: {UBICACION}
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 5));
 
       if (resp.statusCode != 200) return '';
 
@@ -416,6 +416,8 @@ Ubicación del usuario: {UBICACION}
       'opinión', 'reseña', 'comparar', 'diferencia',
       'noticias', 'última', 'actual', 'reciente', 'hoy',
       'quién es', 'qué es', 'cómo llegar', 'cómo hacer',
+      'hay ', 'existe', 'dónde hay', 'dónde encontrar',
+      'información sobre', 'datos de', 'estadísticas',
     ];
     return searchMarkers.any((m) => q.contains(m));
   }
