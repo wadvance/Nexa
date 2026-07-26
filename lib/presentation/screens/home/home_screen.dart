@@ -366,23 +366,196 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.shield_outlined, size: 96,
-                  color: Colors.deepPurpleAccent),
-              const SizedBox(height: 50),
-              SizedBox(
-                width: 220, height: 64,
-                child: ElevatedButton(
-                  onPressed: _start,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurpleAccent,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(32)),
+              // Orb de seguridad animada
+              AnimatedBuilder(
+                animation: _pulse,
+                builder: (_, __) => Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFF7C4DFF).withValues(alpha: 0.3),
+                        const Color(0xFF448AFF).withValues(alpha: 0.15),
+                        const Color(0xFF00E5FF).withValues(alpha: 0.05),
+                        Colors.transparent,
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7C4DFF).withValues(
+                            alpha: 0.3 + _pulse.value * 0.2),
+                        blurRadius: 40 + _pulse.value * 20,
+                        spreadRadius: 10,
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFF00E5FF).withValues(
+                            alpha: 0.15 + _pulse.value * 0.1),
+                        blurRadius: 60 + _pulse.value * 15,
+                        spreadRadius: 5,
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.mic, color: Colors.white, size: 36),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Anillo exterior
+                      Transform.rotate(
+                        angle: _pulse.value * 0.5,
+                        child: Container(
+                          width: 170,
+                          height: 170,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Anillo medio
+                      Transform.rotate(
+                        angle: -_pulse.value * 0.3,
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Núcleo central
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(
+                            colors: [
+                              Color(0xFF7C4DFF),
+                              Color(0xFF448AFF),
+                              Color(0xFF3D5AFE),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.8),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          size: 48,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              // Sin texto bajo el botón — la app es manos libres, todo se dice por voz.
+
+              const SizedBox(height: 50),
+
+              // Título
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [
+                    Color(0xFF7C4DFF),
+                    Color(0xFF00E5FF),
+                    Color(0xFF7C4DFF),
+                  ],
+                ).createShader(bounds),
+                child: const Text(
+                  'AETHERIS',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w200,
+                    letterSpacing: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                'INTELLIGENT SECURITY SYSTEM',
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 4,
+                  color: Colors.white.withValues(alpha: 0.35),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+
+              const SizedBox(height: 60),
+
+              // Botón de inicio
+              SizedBox(
+                width: 240,
+                height: 68,
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (_, __) => Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(34),
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF7C4DFF),
+                          Color.lerp(
+                            const Color(0xFF7C4DFF),
+                            const Color(0xFF00E5FF),
+                            _pulse.value,
+                          )!,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7C4DFF).withValues(
+                              alpha: 0.4 + _pulse.value * 0.2),
+                          blurRadius: 20 + _pulse.value * 10,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _start,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(34),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.mic, color: Colors.white, size: 28),
+                          SizedBox(width: 12),
+                          Text(
+                            'INICIAR',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -434,6 +607,14 @@ class _HomeScreenState extends State<HomeScreen>
             final listening = voiceState == VoiceState.listening;
             final active    = speaking || listening || _busy;
 
+            final orbColor = speaking
+                ? const Color(0xFF2196F3)
+                : listening
+                    ? const Color(0xFFF44336)
+                    : active
+                        ? const Color(0xFF7C4DFF)
+                        : const Color(0xFF3D5AFE);
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 32),
               child: Column(children: [
@@ -451,57 +632,119 @@ class _HomeScreenState extends State<HomeScreen>
                   },
                   child: AnimatedBuilder(
                     animation: _pulse,
-                    builder: (_, __) => Container(
-                      width:  140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: speaking
-                            ? Color.lerp(Colors.blue.shade800,
-                                Colors.blue.shade600, _pulse.value)
-                            : listening
-                                ? Color.lerp(Colors.red.shade800,
-                                    Colors.red.shade600, _pulse.value)
-                                : active
-                                    ? Color.lerp(
-                                        Colors.deepPurple.shade700,
-                                        Colors.deepPurple.shade500,
-                                        _pulse.value)
-                                    : Colors.deepPurple.shade900,
-                        boxShadow: active
-                            ? [
+                    builder: (_, __) => SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Anillo exterior rotatorio
+                          Transform.rotate(
+                            angle: _pulse.value * 0.8,
+                            child: Container(
+                              width: 190,
+                              height: 190,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: orbColor.withValues(
+                                      alpha: 0.2 + _pulse.value * 0.15),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Anillo medio
+                          Transform.rotate(
+                            angle: -_pulse.value * 0.5,
+                            child: Container(
+                              width: 160,
+                              height: 160,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: orbColor.withValues(
+                                      alpha: 0.25 + _pulse.value * 0.1),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Glow exterior
+                          if (active)
+                            Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: orbColor.withValues(
+                                        alpha: 0.3 + _pulse.value * 0.25),
+                                    blurRadius: 30 + _pulse.value * 20,
+                                    spreadRadius: 8 + _pulse.value * 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // Núcleo principal
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  orbColor,
+                                  Color.lerp(orbColor, Colors.black, 0.3)!,
+                                ],
+                              ),
+                              boxShadow: [
                                 BoxShadow(
-                                  color: (speaking
-                                          ? Colors.blue
-                                          : listening
-                                              ? Colors.red
-                                              : Colors.deepPurpleAccent)
-                                      .withValues(
-                                          alpha: 0.45 + _pulse.value * 0.3),
-                                  blurRadius: 24 + _pulse.value * 16,
-                                  spreadRadius: 4,
-                                )
-                              ]
-                            : const [],
-                      ),
-                      child: Icon(
-                        speaking
-                            ? Icons.volume_up_rounded
-                            : listening
-                                ? Icons.mic_rounded
-                                : Icons.face_rounded,
-                        size: 62,
-                        color: Colors.white.withValues(
-                            alpha: active ? 1.0 : 0.55),
+                                  color: orbColor.withValues(alpha: 0.6),
+                                  blurRadius: 25,
+                                  spreadRadius: 3,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              speaking
+                                  ? Icons.volume_up_rounded
+                                  : listening
+                                      ? Icons.mic_rounded
+                                      : Icons.psychology_outlined,
+                              size: 52,
+                              color: Colors.white.withValues(
+                                  alpha: active ? 1.0 : 0.6),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 4),
-                Text(
-                  speaking ? '🔊' : listening ? '🎤' : active ? '💭' : '',
-                  style: TextStyle(fontSize: 20, color: Colors.white.withValues(alpha: 0.3)),
+                const SizedBox(height: 16),
+
+                // Estado
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: Text(
+                    speaking
+                        ? 'HABLANDO'
+                        : listening
+                            ? 'ESCUCHANDO'
+                            : active
+                                ? 'PROCESANDO'
+                                : 'LISTO',
+                    key: ValueKey(voiceState),
+                    style: TextStyle(
+                      color: orbColor.withValues(alpha: 0.7),
+                      fontSize: 11,
+                      letterSpacing: 3,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
 
