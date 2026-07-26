@@ -126,16 +126,29 @@ class AetherisVoice {
 
   Future<String> listenOnce() async {
     if (!_speech.isAvailable) {
-      AppLogger.warn('STT no disponible');
-      return '';
+      AppLogger.warn('STT no disponible, intentando re-inicializar');
+      try {
+        await _speech.initialize(
+          onError: (e) => AppLogger.error('STT error: ${e.errorMsg}'),
+          onStatus: (s) => AppLogger.info('STT status: $s'),
+          debugLogging: false,
+        );
+      } catch (e) {
+        AppLogger.error('STT re-init failed: $e');
+        return '';
+      }
+      if (!_speech.isAvailable) {
+        AppLogger.warn('STT aún no disponible tras re-init');
+        return '';
+      }
     }
     if (voiceState == VoiceState.speaking) {
       AppLogger.warn('STT: TTS activo, saltado');
       return '';
     }
     if (voiceState != VoiceState.idle) {
-      AppLogger.warn('STT: state=$voiceState, saltado');
-      return '';
+      AppLogger.warn('STT: state=$voiceState, forzando idle');
+      voiceState = VoiceState.idle;
     }
     return _doListen();
   }
@@ -166,7 +179,7 @@ class AetherisVoice {
           _silenceTimer = Timer(const Duration(seconds: 15), () {
             // 15 segundos sin speech nuevo → entregar resultado
             if (!completer.isCompleted && _lastResult.isNotEmpty) {
-              AppLogger.info('STT: 8s silencio, entregando "$_lastResult"');
+              AppLogger.info('STT: 15s silencio, entregando "$_lastResult"');
               try { _speech.stop(); } catch (_) {}
               _deliverResult(_lastResult);
             }
@@ -182,10 +195,42 @@ class AetherisVoice {
         ),
       );
     } catch (e) {
-      AppLogger.error('STT listen: $e');
-      _deliverResult('');
-      _activeCompleter = null;
-      return '';
+      AppLogger.error('STT listen failed, intentando re-init: $e');
+      try {
+        await _speech.initialize(
+          onError: (e2) => AppLogger.error('STT error: ${e2.errorMsg}'),
+          onStatus: (s) => AppLogger.info('STT status: $s'),
+          debugLogging: false,
+        );
+        await _speech.listen(
+          onResult: (r) {
+            final words = r.recognizedWords.trim();
+            if (words.isNotEmpty && words != _lastResult) {
+              _lastResult = words;
+            }
+            _silenceTimer?.cancel();
+            _silenceTimer = Timer(const Duration(seconds: 15), () {
+              if (!completer.isCompleted && _lastResult.isNotEmpty) {
+                try { _speech.stop(); } catch (_) {}
+                _deliverResult(_lastResult);
+              }
+            });
+          },
+          listenOptions: stt.SpeechListenOptions(
+            listenMode: stt.ListenMode.dictation,
+            listenFor: const Duration(seconds: 60),
+            pauseFor: const Duration(seconds: 15),
+            localeId: localeId,
+            cancelOnError: false,
+            partialResults: true,
+          ),
+        );
+      } catch (e2) {
+        AppLogger.error('STT re-init+listen also failed: $e2');
+        _deliverResult('');
+        _activeCompleter = null;
+        return '';
+      }
     }
 
     final result = await completer.future.timeout(

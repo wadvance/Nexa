@@ -154,84 +154,91 @@ class _HomeScreenState extends State<HomeScreen>
     _looping = true;
 
     while (mounted && !_muted) {
-      // Esperar a que el TTS termine
-      while (_voice.speaking) {
-        await Future.delayed(const Duration(milliseconds: 100));
+      try {
+        // Esperar a que el TTS termine
+        while (_voice.speaking) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (!mounted) break;
+        }
         if (!mounted) break;
-      }
-      if (!mounted) break;
-      // Pausa para evitar que el micrófono capte el eco de la propia voz
-      await Future.delayed(const Duration(milliseconds: 2000));
-      if (!mounted) break;
-      _syncVoiceState();
+        // Pausa para evitar que el micrófono capte el eco de la propia voz
+        await Future.delayed(const Duration(milliseconds: 2000));
+        if (!mounted) break;
+        _syncVoiceState();
 
-      if (!_voice.sttReady) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        continue;
-      }
+        if (!_voice.sttReady) {
+          AppLogger.warn('Loop: STT not ready, waiting...');
+          await Future.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
 
-      if (kIsWeb && !_voice.listening) {
-        await _voice.startContinuous();
-      }
+        if (kIsWeb && !_voice.listening) {
+          await _voice.startContinuous();
+        }
 
-      final listenFuture = _voice.listenOnce();
-      _syncVoiceState();
+        final listenFuture = _voice.listenOnce();
+        _syncVoiceState();
 
-      final texto = await listenFuture;
-      _syncVoiceState();
-      if (!mounted) break;
+        final texto = await listenFuture;
+        _syncVoiceState();
+        if (!mounted) break;
 
-      if (texto.isEmpty || texto.length < 3) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        continue;
-      }
-      // Ignorar palabras sueltas que son probablemente eco
-      final trimmed = texto.trim().toLowerCase();
-      if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        continue;
-      }
-      // Ignorar si el texto transcrito es un eco de la última respuesta
-      if (_lastResponse.isNotEmpty) {
-        final respLower = _lastResponse.toLowerCase();
-        // Ignorar si contiene palabras clave de la respuesta anterior
-        final respWords = respLower.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
-        final matchCount = respWords.where((w) => trimmed.contains(w)).length;
-        if (matchCount >= 2 || respLower.contains(trimmed) && trimmed.length > 3) {
+        if (texto.isEmpty || texto.length < 3) {
+          AppLogger.info('Loop: texto vacío o corto, reintentando...');
+          await Future.delayed(const Duration(milliseconds: 300));
+          continue;
+        }
+        // Ignorar palabras sueltas que son probablemente eco
+        final trimmed = texto.trim().toLowerCase();
+        if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
-      }
+        // Ignorar si el texto transcrito es un eco de la última respuesta
+        if (_lastResponse.isNotEmpty) {
+          final respLower = _lastResponse.toLowerCase();
+          // Ignorar si contiene palabras clave de la respuesta anterior
+          final respWords = respLower.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
+          final matchCount = respWords.where((w) => trimmed.contains(w)).length;
+          if (matchCount >= 2 || respLower.contains(trimmed) && trimmed.length > 3) {
+            await Future.delayed(const Duration(milliseconds: 100));
+            continue;
+          }
+        }
 
-      // ── Verificación biométrica de voz ─────────────────────────────────
-      final authResult = VoiceAuthService.evaluate(texto);
-      if (authResult.status == VoiceAuthStatus.unauthorized) {
-        // Voz no reconocida: mostrar warning, responder por voz y no procesar
-        _unauthorizedWarning.value = true;
-        AppLogger.warn('Voice auth: voz no reconocida — bloqueado');
-        await _voice.speak(
-          'Acceso denegado. No reconozco tu voz. '
-          'Solo ${authResult.ownerName} puede usar AETHERIS.',
-        );
-        _syncVoiceState();
-        // Ocultar warning después de 4 segundos
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) _unauthorizedWarning.value = false;
-        });
-        continue;
-      }
-      // Si llegó aquí, la voz está autorizada — ocultar warning si estaba visible
-      if (_unauthorizedWarning.value) _unauthorizedWarning.value = false;
+        // ── Verificación biométrica de voz ─────────────────────────────────
+        final authResult = VoiceAuthService.evaluate(texto);
+        if (authResult.status == VoiceAuthStatus.unauthorized) {
+          // Voz no reconocida: mostrar warning, responder por voz y no procesar
+          _unauthorizedWarning.value = true;
+          AppLogger.warn('Voice auth: voz no reconocida — bloqueado');
+          await _voice.speak(
+            'Acceso denegado. No reconozco tu voz. '
+            'Solo ${authResult.ownerName} puede usar AETHERIS.',
+          );
+          _syncVoiceState();
+          // Ocultar warning después de 4 segundos
+          Future.delayed(const Duration(seconds: 4), () {
+            if (mounted) _unauthorizedWarning.value = false;
+          });
+          continue;
+        }
+        // Si llegó aquí, la voz está autorizada — ocultar warning si estaba visible
+        if (_unauthorizedWarning.value) _unauthorizedWarning.value = false;
 
-      // Palabras de parada
-      if (_isStopWord(texto)) {
-        await _voice.stopSpeaking();
-        _syncVoiceState();
-        continue;
-      }
+        // Palabras de parada
+        if (_isStopWord(texto)) {
+          await _voice.stopSpeaking();
+          _syncVoiceState();
+          continue;
+        }
 
-      await _processAndRespond(texto);
-      if (_showHistory) _cargarHistorial();
+        await _processAndRespond(texto);
+        if (_showHistory) _cargarHistorial();
+      } catch (e, st) {
+        AppLogger.error('Loop error: $e\n$st');
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
     }
 
     _looping = false;
