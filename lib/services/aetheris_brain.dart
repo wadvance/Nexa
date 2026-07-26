@@ -234,7 +234,7 @@ Ubicación del usuario: {UBICACION}
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'qwen/qwen-2-7b-instruct:free',
+          'model': 'google/gemma-4-26b-a4b-it:free',
           'messages': messages,
           'temperature': 0.65,
           'max_tokens': maxTokens,

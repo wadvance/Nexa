@@ -87,14 +87,7 @@ class _HomeScreenState extends State<HomeScreen>
     LocationService.requestNow();
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
-    final mensaje =
-        '$saludo. Soy AETHERIS, tu Asistente Experto Omnisciente y Multifacético. '
-        'He integrado las directrices de razonamiento avanzado, servicios y '
-        'medicina moderna y ancestral. Estoy listo para ayudarte con servicios, '
-        'salud, educación, finanzas, tecnología, logística, hotelería, tiendas, '
-        'inmuebles, servicios del hogar, trámites públicos, música, política o '
-        'cualquier tema que traigas. ¿Cuál es el primer reto o tema sobre el '
-        'que deseas profundizar hoy?';
+    final mensaje = '$saludo. Soy AETHERIS. ¿En qué te puedo ayudar?';
     await _voice.speak(mensaje);
       _syncVoiceState();
     if (kIsWeb) {
