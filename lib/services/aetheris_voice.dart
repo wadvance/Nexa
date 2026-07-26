@@ -33,6 +33,7 @@ class AetherisVoice {
   String _lastResult = '';
   Completer<String>? _activeCompleter;
   Timer? _partialTimer;
+  Timer? _silenceTimer;
 
   VoiceState get state => voiceState;
   set state(VoiceState value) => voiceState = value;
@@ -67,13 +68,12 @@ class AetherisVoice {
       await _speech.initialize(
         onError: (e) {
           AppLogger.error('STT error: ${e.errorMsg}');
-          _deliverResult(_lastResult);
+          // No entregamos aquí — esperamos al timeout
         },
         onStatus: (s) {
           AppLogger.info('STT status: $s');
-          if (s == 'notListening' || s == 'done') {
-            _deliverResult(_lastResult);
-          }
+          // Ignoramos 'notListening' y 'done' — no entregamos resultado
+          // El resultado se entrega SOLO por timeout o por el loop principal
         },
         debugLogging: false,
       );
@@ -142,6 +142,7 @@ class AetherisVoice {
 
   Future<String> _doListen() async {
     _lastResult = '';
+    _silenceTimer?.cancel();
     voiceState = VoiceState.listening;
 
     final completer = Completer<String>();
@@ -155,15 +156,21 @@ class AetherisVoice {
       await _speech.listen(
         onResult: (r) {
           final words = r.recognizedWords.trim();
-          if (words.isNotEmpty) {
+          if (words.isNotEmpty && words != _lastResult) {
             _lastResult = words;
             AppLogger.info('STT "$words" final=${r.finalResult}');
           }
 
-          // NO entregamos en finalResult — el motor del navegador corta
-          // muy rápido. Solo actualizamos _lastResult y esperamos a que
-          // el STT se detenga naturalmente (pauseFor timeout).
-          _partialTimer?.cancel();
+          // Reiniciar timer de silencio cada vez que hay speech
+          _silenceTimer?.cancel();
+          _silenceTimer = Timer(const Duration(seconds: 8), () {
+            // 8 segundos sin speech nuevo → entregar resultado
+            if (!completer.isCompleted && _lastResult.isNotEmpty) {
+              AppLogger.info('STT: 8s silencio, entregando "$_lastResult"');
+              try { _speech.stop(); } catch (_) {}
+              _deliverResult(_lastResult);
+            }
+          });
         },
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.dictation,
@@ -201,6 +208,7 @@ class AetherisVoice {
 
   void _deliverResult(String value) {
     _partialTimer?.cancel();
+    _silenceTimer?.cancel();
     if (voiceState == VoiceState.listening) voiceState = VoiceState.idle;
     final c = _activeCompleter;
     if (c != null && !c.isCompleted) c.complete(value);
@@ -233,6 +241,7 @@ class AetherisVoice {
 
   void stop() {
     _partialTimer?.cancel();
+    _silenceTimer?.cancel();
     try { _speech.stop(); } catch (_) {}
     try { _tts.stop(); } catch (_) {}
     voiceState = VoiceState.idle;
