@@ -218,6 +218,15 @@ Ubicación del usuario: {UBICACION}
         'término técnico o canción/artista en otro idioma, mantenlo tal cual (no '
         'traduzcas esos nombres propios).';
 
+    // Búsqueda web automática si la pregunta lo necesita
+    if (_needsWebSearch(question)) {
+      AppLogger.info('Pregunta requiere búsqueda web');
+      final searchResults = await _webSearch(question);
+      if (searchResults.isNotEmpty) {
+        systemContent += '\n\n=== INFORMACIÓN DE BÚSQUEDA WEB ===\n$searchResults\nUsa esta información para responder con datos actualizados y específicos.';
+      }
+    }
+
     final history = await ConversationMemoryService.llmContext();
     final filteredHistory = history.isNotEmpty && history.last['content'] == question
         ? history.sublist(0, history.length - 1)
@@ -267,7 +276,7 @@ Ubicación del usuario: {UBICACION}
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'inclusionai/ling-3.0-flash:free',
+          'model': 'meta-llama/llama-3.3-70b-instruct:free',
           'messages': messages,
           'temperature': 0.65,
           'max_tokens': maxTokens,
@@ -352,6 +361,82 @@ Ubicación del usuario: {UBICACION}
       AppLogger.error('SiliconFlow error: $e');
       return '';
     }
+  }
+
+  /// Busca en DuckDuckGo y devuelve un resumen de resultados.
+  static Future<String> _webSearch(String query) async {
+    try {
+      final encoded = Uri.encodeComponent(query);
+      final url = 'https://html.duckduckgo.com/html/?q=$encoded';
+      final resp = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final body = resp.body;
+      final results = <String>[];
+
+      // Extraer títulos y snippets de los resultados
+      final titlePattern = RegExp(r'class="result__a"[^>]*>(.*?)</a>', dotAll: true);
+      final snippetPattern = RegExp(r'class="result__snippet"[^>]*>(.*?)</[^>]+>', dotAll: true);
+
+      final titles = titlePattern.allMatches(body);
+      final snippets = snippetPattern.allMatches(body);
+
+      for (var i = 0; i < titles.length.clamp(0, 3); i++) {
+        final title = titles.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? '';
+        final snippet = i < snippets.length
+            ? snippets.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? ''
+            : '';
+        if (title.isNotEmpty) {
+          results.add('$title: $snippet');
+        }
+      }
+
+      if (results.isEmpty) return '';
+      return 'Resultados de búsqueda:\n${results.join('\n\n')}';
+      final results = <String>[];
+
+      // Extraer títulos y snippets de los resultados
+      final titlePattern = RegExp(r'class="result__a"[^>]*>(.*?)</a>', dotAll: true);
+      final snippetPattern = RegExp(r'class="result__snippet"[^>]*>(.*?)</[^>]+>', dotAll: true);
+
+      final titles = titlePattern.allMatches(body);
+      final snippets = snippetPattern.allMatches(body);
+
+      for (var i = 0; i < titles.length.clamp(0, 3); i++) {
+        final title = titles.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? '';
+        final snippet = i < snippets.length
+            ? snippets.elementAt(i).group(1)?.replaceAll(RegExp(r'<[^>]+>'), '').trim() ?? ''
+            : '';
+        if (title.isNotEmpty) {
+          results.add('$title: $snippet');
+        }
+      }
+
+      if (results.isEmpty) return '';
+      return 'Resultados de búsqueda:\n${results.join('\n\n')}';
+    } catch (e) {
+      AppLogger.error('Web search error: $e');
+      return '';
+    }
+  }
+
+  /// Decide si una pregunta necesita búsqueda web.
+  static bool _needsWebSearch(String question) {
+    final q = question.toLowerCase();
+    // Preguntas que probablemente necesitan info actualizada
+    final searchMarkers = [
+      'cuál es', 'cuantos años', 'dónde queda', 'dónde está',
+      'cuánto cuesta', 'precio', 'dirección', 'teléfono',
+      'horario', 'abierto', 'cerca', 'mejor', 'recomend',
+      'opinión', 'reseña', 'comparar', 'diferencia',
+      'noticias', 'última', 'actual', 'reciente', 'hoy',
+      'quién es', 'qué es', 'cómo llegar', 'cómo hacer',
+    ];
+    return searchMarkers.any((m) => q.contains(m));
   }
 
   static String? _readKey() {
