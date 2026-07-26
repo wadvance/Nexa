@@ -18,6 +18,13 @@ class AetherisBrain {
   static const String _anthropicApiUrl = 'https://api.anthropic.com/v1/messages';
   static const String _anthropicApiVersion = '2023-06-01';
 
+  /// SiliconFlow - DeepSeek-R1
+  static String? _siliconflowApiKey;
+  static bool _hasSiliconflowSupport = false;
+
+  static const String _siliconflowApiUrl = 'https://api.siliconflow.cn/v1/chat/completions';
+  static const String _siliconflowModel = 'deepseek-ai/DeepSeek-R1';
+
   static const String _systemPrompt = '''
 Eres AETHERIS, un Asistente Experto Omnisciente y Multifacético. Actúas como un mentor de razonamiento avanzado con acceso a una vasta base de conocimiento interdisciplinaria. Tu propósito es responder con absoluta precisión, profundidad lógica y un enfoque analítico a cualquier planteamiento que se te haga. Hablas en el idioma en el que el usuario te escribe y adaptas tu registro (formal/informal) y profundidad al contexto.
 
@@ -94,6 +101,17 @@ Ubicación del usuario: {UBICACION}
   /// Retorna `true` si Claude está activo (tiene una API key válida de Anthropic).
   static bool get isClaudeActive => _hasAnthropicSupport && _anthropicApiKey != null && _anthropicApiKey!.isNotEmpty;
 
+  /// Inicializa la integración con SiliconFlow (DeepSeek-R1).
+  /// Proporciona tu API key de SiliconFlow para habilitar DeepSeek-R1.
+  static Future<void> initializeSiliconflowSupport({required String apiKey}) async {
+    _siliconflowApiKey = apiKey;
+    _hasSiliconflowSupport = true;
+  }
+
+  /// Retorna `true` si SiliconFlow está activo.
+  static bool get isSiliconflowActive =>
+      _hasSiliconflowSupport && _siliconflowApiKey != null && _siliconflowApiKey!.isNotEmpty;
+
   /// Proporciona un system prompt optimizado para Claude que recomienda razonamiento iterativo.
   static String _claudOptimizedSystemPrompt(String question, String domainPrompt) {
     const base = _systemPrompt;
@@ -107,6 +125,11 @@ Ubicación del usuario: {UBICACION}
     if (isClaudeActive) {
       AppLogger.info('Claude 3.5 Sonnet activo - respondiendo con Claude nativo');
       return await _callAnthropicClaude(question, domainPrompt);
+    }
+
+    if (isSiliconflowActive) {
+      AppLogger.info('SiliconFlow DeepSeek-R1 activo');
+      return run(question, extraInstruction: domainPrompt);
     }
 
     AppLogger.warn('Claude no disponible - usando fallback a OpenRouter');
@@ -172,12 +195,6 @@ Ubicación del usuario: {UBICACION}
     final teach = await TeachingParser.tryHandle(question);
     if (teach.handled) return teach.reply;
 
-    final key = _readKey();
-    if (key == null) {
-      AppLogger.error('OPENROUTER_API_KEY no encontrada');
-      return _localFallback(question);
-    }
-
     final userCtx = await UserMemoryService.systemPromptContext();
     final convSummary = await ConversationMemoryService.recentSummary();
     final pastSessionsSummary = await ConversationMemoryService.pastSessionsSummary();
@@ -213,6 +230,20 @@ Ubicación del usuario: {UBICACION}
     ];
 
     AppLogger.info('AI → "${_truncate(question)}"');
+
+    // Prioridad: SiliconFlow (DeepSeek-R1) > OpenRouter
+    if (isSiliconflowActive) {
+      AppLogger.info('Usando SiliconFlow DeepSeek-R1');
+      final reply = await _callSiliconflow(_siliconflowApiKey!, messages);
+      if (reply.isNotEmpty) return reply;
+      AppLogger.warn('SiliconFlow falló, intentando OpenRouter...');
+    }
+
+    final key = _readKey();
+    if (key == null) {
+      AppLogger.error('OPENROUTER_API_KEY no encontrada');
+      return _localFallback(question);
+    }
 
     final reply = await _callOpenRouter(key, messages);
     if (reply.isEmpty) {
@@ -276,7 +307,70 @@ Ubicación del usuario: {UBICACION}
     }
   }
 
+  /// Llama a SiliconFlow API (compatible con OpenAI) usando DeepSeek-R1.
+  static Future<String> _callSiliconflow(
+    String apiKey,
+    List<Map<String, dynamic>> messages,
+  ) async {
+    try {
+      final resp = await http.post(
+        Uri.parse(_siliconflowApiUrl),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'model': _siliconflowModel,
+          'messages': messages,
+          'temperature': 0.65,
+          'max_tokens': maxTokens,
+          'stream': false,
+        }),
+      ).timeout(const Duration(seconds: 25));
+
+      if (resp.statusCode != 200) {
+        AppLogger.error('SiliconFlow HTTP ${resp.statusCode}: ${resp.body}');
+        return '';
+      }
+
+      final data = json.decode(resp.body) as Map<String, dynamic>;
+      final choices = data['choices'] as List?;
+      if (choices == null || choices.isEmpty) {
+        AppLogger.error('SiliconFlow: sin choices. Body: ${resp.body}');
+        return '';
+      }
+
+      final content = (choices.first as Map)['message']?['content']?.toString().trim() ?? '';
+      AppLogger.info('SiliconFlow DeepSeek-R1 response: ${content.length} chars');
+      if (content.isEmpty) {
+        AppLogger.error('SiliconFlow: content vacío.');
+      }
+      return _stripMarkdown(content);
+    } catch (e) {
+      AppLogger.error('SiliconFlow error: $e');
+      return '';
+    }
+  }
+
   static String? _readKey() {
+    // Intentar SiliconFlow primero
+    try {
+      final siliconflowCandidates = [
+        dotenv.env['SILICONFLOW_API_KEY'],
+        dotenv.env['siliconflow_api_key'],
+      ];
+      for (final k in siliconflowCandidates) {
+        if (k != null && k.trim().isNotEmpty) {
+          AppLogger.info('SiliconFlow API key found via dotenv (${k.length} chars)');
+          initializeSiliconflowSupport(apiKey: k.trim());
+          return k.trim();
+        }
+      }
+    } catch (e) {
+      AppLogger.error('dotenv read error (SiliconFlow): $e');
+    }
+
+    // Luego OpenRouter
     try {
       final candidates = [
         dotenv.env['OPENROUTER_API_KEY'],
@@ -284,18 +378,27 @@ Ubicación del usuario: {UBICACION}
       ];
       for (final k in candidates) {
         if (k != null && k.trim().isNotEmpty) {
-          AppLogger.info('API key found via dotenv (${k.length} chars)');
+          AppLogger.info('OpenRouter API key found via dotenv (${k.length} chars)');
           return k.trim();
         }
       }
     } catch (e) {
       AppLogger.error('dotenv read error: $e');
     }
+
     const fromEnv = String.fromEnvironment('OPENROUTER_API_KEY');
     if (fromEnv.isNotEmpty) {
       AppLogger.info('API key found via dart-define (${fromEnv.length} chars)');
       return fromEnv;
     }
+
+    const siliconflowFromEnv = String.fromEnvironment('SILICONFLOW_API_KEY');
+    if (siliconflowFromEnv.isNotEmpty) {
+      AppLogger.info('SiliconFlow API key found via dart-define (${siliconflowFromEnv.length} chars)');
+      initializeSiliconflowSupport(apiKey: siliconflowFromEnv);
+      return siliconflowFromEnv;
+    }
+
     AppLogger.error('NO API KEY FOUND - check --dart-define or GitHub secret');
     return null;
   }
