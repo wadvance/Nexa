@@ -9,7 +9,9 @@ class WeatherService {
   static String get _apiKey {
     final de = dotenv.env['OPENWEATHERMAP_API_KEY'];
     if (de != null && de.isNotEmpty) return de;
-    return const String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+    const fromDef = String.fromEnvironment('OPENWEATHERMAP_API_KEY');
+    if (fromDef.isNotEmpty) return fromDef;
+    return '72c074fd029ea709c8556e780ca50415';
   }
 
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
