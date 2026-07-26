@@ -89,12 +89,11 @@ class _HomeScreenState extends State<HomeScreen>
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
     final mensaje = '$saludo. Soy AETHERIS. ¿En qué te puedo ayudar?';
     await _voice.speak(mensaje);
-      _syncVoiceState();
+    _syncVoiceState();
     if (kIsWeb) {
-      _voiceState.value = VoiceState.idle;
-    } else if (mounted) {
-      _loop();
+      await _voice.startContinuous();
     }
+    if (mounted) _loop();
   }
 
   /// Web: inicia la sesión continua de voz tras el primer tap.
@@ -169,6 +168,10 @@ class _HomeScreenState extends State<HomeScreen>
       if (!_voice.sttReady) {
         await Future.delayed(const Duration(milliseconds: 500));
         continue;
+      }
+
+      if (kIsWeb && !_voice.listening) {
+        await _voice.startContinuous();
       }
 
       final listenFuture = _voice.listenOnce();
