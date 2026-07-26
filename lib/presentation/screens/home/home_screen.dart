@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
       if (!mounted) break;
       // Pausa para evitar que el micrófono capte el eco de la propia voz
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 1200));
       if (!mounted) break;
       _syncVoiceState();
 
@@ -191,7 +191,10 @@ class _HomeScreenState extends State<HomeScreen>
       // Ignorar si el texto transcrito es un eco de la última respuesta
       if (_lastResponse.isNotEmpty) {
         final respLower = _lastResponse.toLowerCase();
-        if (respLower.contains(trimmed) && trimmed.length > 4) {
+        // Ignorar si contiene palabras clave de la respuesta anterior
+        final respWords = respLower.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
+        final matchCount = respWords.where((w) => trimmed.contains(w)).length;
+        if (matchCount >= 2 || respLower.contains(trimmed) && trimmed.length > 3) {
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
