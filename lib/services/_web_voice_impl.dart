@@ -35,9 +35,11 @@ class WebAetherisVoice extends AetherisVoice {
   _WebSpeechRecognizer? _webSpeech;
   bool _webSttReady = false;
   bool _webSttActive = false;
-  Completer<String>? _webNextResult;
   final List<String> _webPendingResults = [];
   Timer? _stabilityTimer;
+  Timer? _finalDebounce;
+  String _accumFinal = '';
+  Completer<String>? _pendingFinalCompleter;
 
   @override
   bool get sttReady => _webSttReady;
@@ -64,27 +66,23 @@ class WebAetherisVoice extends AetherisVoice {
         final transcript = last.item(0).transcript.trim();
         final isFinal = last.isFinal;
         if (transcript.isEmpty) return;
-        if (transcript.length < 3) return;
         AppLogger.info('WebSpeech: "$transcript" final=$isFinal');
 
         _stabilityTimer?.cancel();
+        _finalDebounce?.cancel();
+
         if (isFinal) {
-          // El navegador detectó una pausa → entregar inmediatamente
-          if (_webNextResult != null) {
-            _webNextResult!.complete(transcript);
-            _webNextResult = null;
-          } else {
-            _webPendingResults.add(transcript);
-          }
+          _accumFinal += '$transcript ';
+          // Esperar 1.5s tras un isFinal para ver si llegan más segmentos
+          _finalDebounce = Timer(const Duration(milliseconds: 1500), () {
+            _deliverAccumulated();
+          });
         } else {
-          // Resultado parcial → esperar estabilidad, solo si tiene ≥3 palabras
-          if (transcript.split(' ').length < 3) return;
-          _stabilityTimer = Timer(const Duration(milliseconds: 300), () {
-            if (_webNextResult != null) {
-              _webNextResult!.complete(transcript);
-              _webNextResult = null;
-            } else {
-              _webPendingResults.add(transcript);
+          // Resultado parcial → guardar como candidato temporal
+          _stabilityTimer = Timer(const Duration(milliseconds: 500), () {
+            if (_accumFinal.isEmpty && _pendingFinalCompleter != null) {
+              _pendingFinalCompleter!.complete(transcript);
+              _pendingFinalCompleter = null;
             }
           });
         }
@@ -96,6 +94,9 @@ class WebAetherisVoice extends AetherisVoice {
 
       _webSpeech!.onend = ((web.Event e) {
         AppLogger.info('WebSpeech onend');
+        _finalDebounce?.cancel();
+        _stabilityTimer?.cancel();
+        _deliverAccumulated();
       }).toJS;
 
       _webSttReady = true;
@@ -107,6 +108,19 @@ class WebAetherisVoice extends AetherisVoice {
     _utterance.rate = 1.08;
     _utterance.pitch = 1.0;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
+  }
+
+  void _deliverAccumulated() {
+    final text = _accumFinal.trim();
+    _accumFinal = '';
+    if (text.isEmpty) return;
+    AppLogger.info('WebSpeech deliver: "$text"');
+    if (_pendingFinalCompleter != null) {
+      _pendingFinalCompleter!.complete(text);
+      _pendingFinalCompleter = null;
+    } else {
+      _webPendingResults.add(text);
+    }
   }
 
   void _selectVoice() {
@@ -199,6 +213,10 @@ class WebAetherisVoice extends AetherisVoice {
     if (wasActive) {
       _webSttActive = false;
       _stabilityTimer?.cancel();
+      _finalDebounce?.cancel();
+      _accumFinal = '';
+      _pendingFinalCompleter?.complete('');
+      _pendingFinalCompleter = null;
       _webSpeech?.stop();
       // Esperar onend antes de poder llamar start() de nuevo
       final ended = Completer<void>();
@@ -226,8 +244,9 @@ class WebAetherisVoice extends AetherisVoice {
     // Reanudar STT (onend ya ocurrió, start() no debería fallar)
     if (wasActive) {
       _webPendingResults.clear();
-      _webNextResult?.complete('');
-      _webNextResult = null;
+      _accumFinal = '';
+      _stabilityTimer?.cancel();
+      _finalDebounce?.cancel();
       _webSttActive = true;
       try { _webSpeech?.start(); } catch (e) {
         AppLogger.error('WebSpeech restart: $e');
@@ -249,9 +268,11 @@ class WebAetherisVoice extends AetherisVoice {
     AppLogger.info('WebSpeech: starting continuous');
 
     _webPendingResults.clear();
-    _webNextResult?.complete('');
-    _webNextResult = null;
+    _accumFinal = '';
+    _pendingFinalCompleter?.complete('');
+    _pendingFinalCompleter = null;
     _stabilityTimer?.cancel();
+    _finalDebounce?.cancel();
 
     try {
       _webSpeech!.start();
@@ -266,8 +287,10 @@ class WebAetherisVoice extends AetherisVoice {
   void stopContinuous() {
     _webSttActive = false;
     _stabilityTimer?.cancel();
-    _webNextResult?.complete('');
-    _webNextResult = null;
+    _finalDebounce?.cancel();
+    _accumFinal = '';
+    _pendingFinalCompleter?.complete('');
+    _pendingFinalCompleter = null;
     try { _webSpeech?.stop(); } catch (_) {}
   }
 
@@ -278,14 +301,14 @@ class WebAetherisVoice extends AetherisVoice {
       return _webPendingResults.removeAt(0);
     }
     voiceState = VoiceState.listening;
-    _webNextResult = Completer<String>();
+    _pendingFinalCompleter = Completer<String>();
     try {
-      return await _webNextResult!.future.timeout(
+      return await _pendingFinalCompleter!.future.timeout(
         const Duration(seconds: 10),
         onTimeout: () => '',
       );
     } finally {
-      _webNextResult = null;
+      _pendingFinalCompleter = null;
       voiceState = VoiceState.idle;
     }
   }
@@ -293,6 +316,8 @@ class WebAetherisVoice extends AetherisVoice {
   @override
   void stop() {
     stopContinuous();
+    _finalDebounce?.cancel();
+    _accumFinal = '';
     _synth?.cancel();
   }
 }
