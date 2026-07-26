@@ -231,6 +231,9 @@ Ubicación del usuario: {UBICACION}
 
     AppLogger.info('AI → "${_truncate(question)}"');
 
+    // Leer keys primero (inicializa SiliconFlow si existe la key)
+    final key = _readKey();
+
     // Prioridad: SiliconFlow (DeepSeek-R1) > OpenRouter
     if (isSiliconflowActive) {
       AppLogger.info('Usando SiliconFlow DeepSeek-R1');
@@ -239,7 +242,6 @@ Ubicación del usuario: {UBICACION}
       AppLogger.warn('SiliconFlow falló, intentando OpenRouter...');
     }
 
-    final key = _readKey();
     if (key == null) {
       AppLogger.error('OPENROUTER_API_KEY no encontrada');
       return _localFallback(question);
@@ -421,6 +423,10 @@ Ubicación del usuario: {UBICACION}
   /// Elimina formateo markdown de un texto para que suene bien al TTS.
   static String _stripMarkdown(String text) {
     var s = text;
+    // Eliminar tags de razonamiento de DeepSeek-R1:<think>...</think>
+    s = s.replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '');
+    // Eliminar tags de razonamiento sueltos
+    s = s.replaceAll(RegExp(r'<think>|</think>'), '');
     // Negrita: **texto** o __texto__
     s = s.replaceAll(RegExp(r'\*\*(.+?)\*\*'), r'$1');
     s = s.replaceAll(RegExp(r'__(.+?)__'), r'$1');
