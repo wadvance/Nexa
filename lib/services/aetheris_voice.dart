@@ -163,8 +163,8 @@ class AetherisVoice {
 
           // Reiniciar timer de silencio cada vez que hay speech
           _silenceTimer?.cancel();
-          _silenceTimer = Timer(const Duration(seconds: 8), () {
-            // 8 segundos sin speech nuevo → entregar resultado
+          _silenceTimer = Timer(const Duration(seconds: 15), () {
+            // 15 segundos sin speech nuevo → entregar resultado
             if (!completer.isCompleted && _lastResult.isNotEmpty) {
               AppLogger.info('STT: 8s silencio, entregando "$_lastResult"');
               try { _speech.stop(); } catch (_) {}
@@ -175,7 +175,7 @@ class AetherisVoice {
         listenOptions: stt.SpeechListenOptions(
           listenMode: stt.ListenMode.dictation,
           listenFor: const Duration(seconds: 60),
-          pauseFor: const Duration(seconds: 8),
+          pauseFor: const Duration(seconds: 15),
           localeId: localeId,
           cancelOnError: false,
           partialResults: true,
