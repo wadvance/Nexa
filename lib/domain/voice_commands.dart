@@ -332,7 +332,6 @@ class VoiceCommands {
     String? city;
     final rawLower = raw.toLowerCase();
     for (final prep in prepsRaw) {
-      // buscar en lowercase para indexOf pero extraer en raw para capitalización
       final idx = rawLower.indexOf(prep);
       if (idx >= 0) {
         city = raw.substring(idx + prep.length).trim()
@@ -341,41 +340,48 @@ class VoiceCommands {
             .replaceAll(RegExp(r'\b(hoy|mañana|ahora|actual|este mes|allá|alla|alli|el pronostico|el tiempo|el clima)\b',
             caseSensitive: false), '')
             .trim();
-        // Limpiar palabras sobrantes al final
         city = city.replaceAll(RegExp(r'[.!?]+$'), '').trim();
         if (city.isNotEmpty) break;
       }
     }
     AppLogger.info('Weather: detected city="$city" isForecast=$isForecast');
-    if (city != null && city.length > 2) {
-      try {
-        final resp = isForecast
+
+    // Intentar API de OpenWeatherMap
+    String? weatherResp;
+    try {
+      if (city != null && city.length > 2) {
+        weatherResp = isForecast
             ? await WeatherService.formatForecast(city)
             : await WeatherService.formatCityWeather(city);
-        AppLogger.info('Weather: city response="${resp.substring(0, resp.length.clamp(0, 60))}…"');
-        if (resp.startsWith('No encontré') || resp.startsWith('No pude')) {
-          return isForecast
-              ? await WeatherService.forecastOrDefault()
-              : await WeatherService.currentOrDefault();
-        }
-        return resp;
-      } catch (e) {
-        AppLogger.error('Weather city error: $e');
-        return isForecast
+      } else {
+        weatherResp = isForecast
             ? await WeatherService.forecastOrDefault()
             : await WeatherService.currentOrDefault();
       }
-    }
-    try {
-      final geo = isForecast
-          ? await WeatherService.forecastOrDefault()
-          : await WeatherService.currentOrDefault();
-      AppLogger.info('Weather: geo response="${geo.substring(0, geo.length.clamp(0, 60))}…"');
-      return geo;
+      if (weatherResp != null && (weatherResp.startsWith('No encontré') || weatherResp.startsWith('No pude'))) {
+        weatherResp = null;
+      }
     } catch (e) {
-      AppLogger.error('Weather geo error: $e');
-      return 'No pude obtener el clima ahora mismo. Verifica tu conexión.';
+      AppLogger.error('Weather API error: $e');
+      weatherResp = null;
     }
+
+    // Si la API funcionó, devolver
+    if (weatherResp != null) return weatherResp;
+
+    // Fallback: pedir a la IA que dé el pronóstico
+    AppLogger.info('Weather: API failed, falling back to AI');
+    final cityLabel = city?.isNotEmpty == true ? city : 'Panamá';
+    final tipo = isForecast ? 'pronóstico para mañana' : 'clima actual';
+    final aiResp = await _askGemini(
+        '¿Cuál es el $tipo en $cityLabel ahora mismo? '
+        'Responde en una oración corta con temperatura aproximada y condición del tiempo.',
+        domain: KnowledgeDomain.general);
+    if (aiResp.isNotEmpty && !_isGenericFallback(aiResp)) {
+      return 'Según mis datos, $aiResp';
+    }
+    return 'No pude obtener el clima de $cityLabel en este momento. Verifica tu conexión.';
+  }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
