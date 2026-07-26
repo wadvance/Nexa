@@ -94,32 +94,155 @@
     #flutter-loading {
       position: fixed;
       inset: 0;
-      background: #0D0D14;
+      background: linear-gradient(135deg, #0D0221 0%, #150734 40%, #1A0A3E 70%, #0D0221 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 8888;
-      transition: opacity 0.4s;
+      transition: opacity 0.6s ease-out;
+      overflow: hidden;
     }
     #flutter-loading.hidden {
       opacity: 0;
       pointer-events: none;
     }
-    .loader-ring {
-      width: 56px; height: 56px;
-      border: 4px solid rgba(124,77,255,0.2);
-      border-top-color: #7C4DFF;
+
+    /* Partículas de fondo */
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(255,255,255,0.4);
       border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-      margin-bottom: 20px;
+      animation: float 6s ease-in-out infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #flutter-loading p {
-      color: rgba(255,255,255,0.45);
-      font-family: system-ui, sans-serif;
-      font-size: 13px;
-      letter-spacing: 1px;
+    .particle:nth-child(1)  { top: 15%; left: 20%; animation-delay: 0s; animation-duration: 5s; }
+    .particle:nth-child(2)  { top: 70%; left: 80%; animation-delay: 1s; animation-duration: 7s; }
+    .particle:nth-child(3)  { top: 40%; left: 10%; animation-delay: 2s; animation-duration: 6s; }
+    .particle:nth-child(4)  { top: 80%; left: 40%; animation-delay: 0.5s; animation-duration: 8s; }
+    .particle:nth-child(5)  { top: 20%; left: 70%; animation-delay: 1.5s; animation-duration: 5.5s; }
+    .particle:nth-child(6)  { top: 60%; left: 25%; animation-delay: 3s; animation-duration: 6.5s; }
+    .particle:nth-child(7)  { top: 30%; left: 90%; animation-delay: 2.5s; animation-duration: 7.5s; }
+    .particle:nth-child(8)  { top: 85%; left: 60%; animation-delay: 0.8s; animation-duration: 5.8s; }
+    .particle:nth-child(9)  { top: 10%; left: 50%; animation-delay: 1.8s; animation-duration: 6.8s; }
+    .particle:nth-child(10) { top: 50%; left: 5%;  animation-delay: 3.5s; animation-duration: 7.2s; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+      50% { transform: translateY(-20px) scale(1.5); opacity: 0.8; }
+    }
+
+    /* Anillos orbitales */
+    .orbital-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      margin-bottom: 32px;
+    }
+    .orbital-ring {
+      position: absolute;
+      border: 1.5px solid transparent;
+      border-radius: 50%;
+      animation: orbit-spin 8s linear infinite;
+    }
+    .orbital-ring:nth-child(1) {
+      width: 180px; height: 180px;
+      top: 0; left: 0;
+      border-image: linear-gradient(90deg, #7C4DFF, #00E5FF) 1;
+      border-image: none;
+      border-color: rgba(124,77,255,0.5);
+      animation-duration: 8s;
+    }
+    .orbital-ring:nth-child(2) {
+      width: 140px; height: 140px;
+      top: 20px; left: 20px;
+      border-color: rgba(0,229,255,0.4);
+      animation-duration: 6s;
+      animation-direction: reverse;
+    }
+    .orbital-ring:nth-child(3) {
+      width: 100px; height: 100px;
+      top: 40px; left: 40px;
+      border-color: rgba(124,77,255,0.3);
+      animation-duration: 10s;
+    }
+    @keyframes orbit-spin { to { transform: rotate(360deg); } }
+
+    /* Glow pulsante */
+    .glow-core {
+      position: absolute;
+      width: 100px; height: 100px;
+      top: 40px; left: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #7C4DFF 0%, #448AFF 50%, transparent 70%);
+      animation: pulse-glow 2s ease-in-out infinite;
+      filter: blur(8px);
+    }
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* Icono central */
+    .core-icon {
+      position: absolute;
+      width: 70px; height: 70px;
+      top: 55px; left: 55px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .core-icon svg {
+      width: 44px; height: 44px;
+      filter: drop-shadow(0 0 12px rgba(124,77,255,0.8));
+    }
+
+    /* Texto */
+    .splash-title {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 32px;
+      font-weight: 200;
+      letter-spacing: 14px;
+      background: linear-gradient(90deg, #7C4DFF, #00E5FF, #7C4DFF);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s ease-in-out infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .splash-subtitle {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 40px;
+    }
+
+    /* Barra de progreso */
+    .splash-progress {
+      width: 140px;
+      height: 2px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .splash-progress::after {
+      content: '';
+      display: block;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, #7C4DFF, #00E5FF, transparent);
+      border-radius: 2px;
+      animation: progress-slide 1.5s ease-in-out infinite;
+    }
+    @keyframes progress-slide {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
     }
   </style>
 </head>
@@ -131,10 +254,40 @@
   <script src="https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore-compat.js"></script>
 
   <!-- Splash de carga -->
-  <!-- build: 2026-07-deploy-fix-errors -->
+  <!-- build: 2026-07-splash-redesign -->
   <div id="flutter-loading">
-    <div class="loader-ring"></div>
-    <p>AETHERIS</p>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+
+    <div class="orbital-container">
+      <div class="orbital-ring"></div>
+      <div class="orbital-ring"></div>
+      <div class="orbital-ring"></div>
+      <div class="glow-core"></div>
+      <div class="core-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#7C4DFF" stroke-width="1.5" fill="none"/>
+          <path d="M12 6C8.69 6 6 8.69 6 12s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" stroke="#00E5FF" stroke-width="1" fill="none"/>
+          <circle cx="12" cy="12" r="3" fill="#FFFFFF"/>
+          <line x1="12" y1="2" x2="12" y2="6" stroke="#7C4DFF" stroke-width="1.5"/>
+          <line x1="12" y1="18" x2="12" y2="22" stroke="#7C4DFF" stroke-width="1.5"/>
+          <line x1="2" y1="12" x2="6" y2="12" stroke="#7C4DFF" stroke-width="1.5"/>
+          <line x1="18" y1="12" x2="22" y2="12" stroke="#7C4DFF" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="splash-title">AETHERIS</div>
+    <div class="splash-subtitle">INTELLIGENT SECURITY SYSTEM</div>
+    <div class="splash-progress"></div>
   </div>
 
   <!-- Banner de instalación PWA -->
