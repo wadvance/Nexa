@@ -33,8 +33,6 @@ class AetherisVoice {
   String _lastResult = '';
   Completer<String>? _activeCompleter;
   Timer? _partialTimer;
-  DateTime _lastSpeechTime = DateTime.now();
-  Duration _speechDuration = Duration.zero;
 
   VoiceState get state => voiceState;
   set state(VoiceState value) => voiceState = value;
@@ -144,8 +142,6 @@ class AetherisVoice {
 
   Future<String> _doListen() async {
     _lastResult = '';
-    _lastSpeechTime = DateTime.now();
-    _speechDuration = Duration.zero;
     voiceState = VoiceState.listening;
 
     final completer = Completer<String>();
@@ -160,24 +156,13 @@ class AetherisVoice {
         onResult: (r) {
           final words = r.recognizedWords.trim();
           if (words.isNotEmpty) {
-            final now = DateTime.now();
-            _speechDuration = now.difference(_lastSpeechTime);
             _lastResult = words;
-            _lastSpeechTime = now;
-            AppLogger.info('STT "$words" final=${r.finalResult} dur=${_speechDuration.inSeconds}s');
+            AppLogger.info('STT "$words" final=${r.finalResult}');
           }
 
-          if (r.finalResult) {
-            // Si el usuario apenas lleva menos de 2 segundos hablando,
-            // ignorar el finalResult y seguir escuchando
-            if (_speechDuration.inSeconds < 2 && _lastResult.split(' ').length < 4) {
-              AppLogger.info('STT: finalResult prematuro, ignorando...');
-              return;
-            }
-            _deliverResult(_lastResult);
-            return;
-          }
-
+          // NO entregamos en finalResult — el motor del navegador corta
+          // muy rápido. Solo actualizamos _lastResult y esperamos a que
+          // el STT se detenga naturalmente (pauseFor timeout).
           _partialTimer?.cancel();
         },
         listenOptions: stt.SpeechListenOptions(
@@ -197,7 +182,7 @@ class AetherisVoice {
     }
 
     final result = await completer.future.timeout(
-      const Duration(seconds: 45),
+      const Duration(seconds: 65),
       onTimeout: () {
         AppLogger.info('STT timeout, entregando "$_lastResult"');
         try { _speech.stop(); } catch (_) {}
