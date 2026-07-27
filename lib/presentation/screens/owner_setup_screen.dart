@@ -26,6 +26,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   final _voice      = AetherisVoice.instance;
 
   String _voiceSample   = '';
+  bool _skipVoice       = false;
   String _statusMessage = '';
   bool   _recording     = false;
   bool   _saving        = false;
@@ -49,7 +50,8 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     if (_recording) return;
     setState(() {
       _recording     = true;
-      _statusMessage = 'Escuchando… lee la frase en voz alta.';
+      _skipVoice     = false;
+      _statusMessage = 'Escuchando. lee la frase en voz alta.';
     });
 
     await _voice.speak(
@@ -59,7 +61,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     setState(() {
       _recording = false;
       if (result.isEmpty) {
-        _statusMessage = 'No capturé tu voz. Inténtalo de nuevo.';
+        _statusMessage = 'No se captur� la voz. Continuar sin grabaci�n.';
+        _skipVoice     = true;
+        _step          = 2;
       } else {
         _voiceSample   = result;
         _statusMessage = 'Frase capturada: "$result"';
@@ -80,7 +84,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
       _setStatus('Ingresa tu nombre primero.');
       return;
     }
-    if (_voiceSample.isEmpty) {
+    if (_voiceSample.isEmpty && !_skipVoice) {
       _setStatus('Primero graba tu frase de voz.');
       return;
     }
@@ -93,7 +97,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
 
     final ok = await OwnerGuardService.registerOwner(
       ownerName:    name,
-      voiceSample:  _voiceSample,
+      voiceSample:  _skipVoice ? '' : _voiceSample,
       secretPhrase: phrase,
     );
 
@@ -259,9 +263,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
           const SizedBox(height: 12),
           if (_step < 2)
             TextButton(
-              onPressed: _voiceSample.isEmpty ? null : () => setState(() => _step = 2),
+              onPressed: () => setState(() => _step = 2),
               child: const Text(
-                'Omitir frase de voz → usar solo contraseña de texto',
+                'Omitir frase de voz  usar solo contrase�a de texto',
                 style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 12),
               ),
             ),
@@ -345,8 +349,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                       setState(() {
                         _step = 0;
                         _voiceSample = '';
+                        _skipVoice = false;
                         _phraseCtrl.clear();
-                        _statusMessage = 'Perfil borrado. Regístrate de nuevo.';
+                        _statusMessage = 'Perfil borrado. Reg�strate de nuevo.';
                       });
                     }
                   }
