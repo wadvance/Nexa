@@ -679,12 +679,35 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(children: [
                 // ORB
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (_voice.speaking) {
                       _voice.stopSpeaking();
                       _syncVoiceState();
                     } else if (!_started) {
                       _start();
+                    } else if (_sttFailed) {
+                      // Intentar reinicializar STT directamente
+                      setState(() {
+                        _sttFailed = false;
+                        _busy = true;
+                      });
+                      _syncVoiceState();
+                      final ok = await _voice.reinitializeStt();
+                      if (ok) {
+                        if (kIsWeb) await _voice.startContinuous();
+                        if (mounted) {
+                          setState(() => _busy = false);
+                          _loop();
+                        }
+                      } else {
+                        if (mounted) {
+                          setState(() {
+                            _sttFailed = true;
+                            _busy = false;
+                          });
+                          _syncVoiceState();
+                        }
+                      }
                     } else {
                       if (_looping) {
                         _looping = false;
