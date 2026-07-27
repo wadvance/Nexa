@@ -31,6 +31,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   bool   _recording     = false;
   bool   _saving        = false;
   bool   _done          = false;
+  bool   _obscureSecret = true;
 
   // Step: 0=nombre, 1=voz, 2=frase secreta, 3=confirmar
   int _step = 0;
@@ -257,8 +258,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             controller: _phraseCtrl,
             hint: 'Frase o contraseña secreta',
             icon: Icons.lock_outline,
-            obscure: true,
+            obscure: _obscureSecret,
             enabled: _step >= 2,
+            onToggleObscure: () => setState(() => _obscureSecret = !_obscureSecret),
           ),
           const SizedBox(height: 12),
           if (_step < 2)
@@ -474,6 +476,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     bool obscure = false,
     bool enabled = true,
     ValueChanged<String>? onChanged,
+    VoidCallback? onToggleObscure,
   }) =>
       TextField(
         controller: controller,
@@ -485,6 +488,16 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
           hintText: hint,
           hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
           prefixIcon: Icon(icon, color: Colors.deepPurpleAccent),
+          suffixIcon: obscure && onToggleObscure != null
+              ? IconButton(
+                  icon: Icon(
+                    obscure ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    size: 16,
+                  ),
+                  onPressed: onToggleObscure,
+                )
+              : null,
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.05),
           border: OutlineInputBorder(
