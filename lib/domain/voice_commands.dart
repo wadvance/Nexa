@@ -361,11 +361,11 @@ class VoiceCommands {
       // Para preguntas de lluvia, siempre usar pronóstico (forecast)
       final useForecast = isForecast || isRainQuestion;
       if (city != null && city.length > 2) {
-        weatherResp = await useForecast
+        weatherResp = useForecast
             ? await WeatherService.formatForecast(city).timeout(const Duration(seconds: 8))
             : await WeatherService.formatCityWeather(city).timeout(const Duration(seconds: 8));
       } else {
-        weatherResp = await useForecast
+        weatherResp = useForecast
             ? await WeatherService.forecastOrDefault().timeout(const Duration(seconds: 8))
             : await WeatherService.currentOrDefault().timeout(const Duration(seconds: 8));
       }
@@ -378,12 +378,10 @@ class VoiceCommands {
     }
 
     // Fallback rápido si falla la API
-    if (weatherResp == null) {
-      weatherResp = 'No pude obtener el clima ahora. Intenta de nuevo más tarde.';
-    }
+    weatherResp ??= 'No pude obtener el clima ahora. Intenta de nuevo más tarde.';
 
     // Para preguntas específicas de lluvia, usar IA para interpretar datos
-    if (isRainQuestion && weatherResp != null && !weatherResp.contains('No pude')) {
+    if (isRainQuestion && !weatherResp.contains('No pude')) {
       AppLogger.info('Weather: rain question, using AI to interpret');
       try {
         final aiResp = await _askGemini(
@@ -403,7 +401,7 @@ class VoiceCommands {
     }
 
     // Fallback: si la API falló, usar IA directamente con timeout
-    if (weatherResp == null || weatherResp.contains('No pude')) {
+    if (weatherResp.contains('No pude')) {
       try {
         AppLogger.info('Weather: API failed, falling back to AI');
         final tipo = (isForecast || isRainQuestion) ? 'pronóstico del tiempo' : 'clima actual';
