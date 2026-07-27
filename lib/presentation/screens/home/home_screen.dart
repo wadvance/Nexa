@@ -154,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen>
     _looping = true;
 
     int sttNotReadyCount = 0;
+    int emptyResultCount = 0;
 
     while (mounted && !_muted) {
       try {
@@ -197,10 +198,19 @@ class _HomeScreenState extends State<HomeScreen>
         if (!mounted) break;
 
         if (texto.isEmpty || texto.length < 3) {
-          AppLogger.info('Loop: texto vacío o corto, reintentando...');
+          emptyResultCount++;
+          AppLogger.info('Loop: texto vacío o corto (count: $emptyResultCount)');
+          if (emptyResultCount >= 3) {
+            emptyResultCount = 0;
+            await _voice.speak(
+              'No puedo escuchar tu voz. Toca el orbe y vuelve a hablar.',
+            );
+            _syncVoiceState();
+          }
           await Future.delayed(const Duration(milliseconds: 300));
           continue;
         }
+        emptyResultCount = 0;
         // Ignorar palabras sueltas que son probablemente eco
         final trimmed = texto.trim().toLowerCase();
         if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
@@ -645,7 +655,13 @@ class _HomeScreenState extends State<HomeScreen>
                       _syncVoiceState();
                     } else if (kIsWeb && !_looping) {
                       _webStart();
-                    } else if (!_looping) {
+                    } else if (_looping) {
+                      _looping = false;
+                      _voice.stop();
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) _loop();
+                      });
+                    } else {
                       _loop();
                     }
                   },
