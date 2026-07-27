@@ -34,7 +34,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   bool   _obscureSecret = true;
 
   // Step: 0=nombre, 1=voz, 2=frase secreta, 3=confirmar
-  int _step = 0;
+  int _step = OwnerGuardService.isRegistered ? 1 : 0;
 
   @override
   void dispose() {
@@ -83,7 +83,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _saveProfile() async {
-    final name   = _nameCtrl.text.trim();
+    final name   = OwnerGuardService.isRegistered
+        ? OwnerGuardService.ownerName
+        : _nameCtrl.text.trim();
     final phrase = _phraseCtrl.text.trim();
 
     if (name.isEmpty) {
@@ -180,16 +182,37 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
           // PASO 1 — Nombre
           _sectionLabel('1. Tu nombre'),
           const SizedBox(height: 8),
-          _inputField(
-            controller: _nameCtrl,
-            hint: 'Ej: Carlos Rodríguez',
-            icon: Icons.person_outline,
-            onChanged: (_) {
-              if (_nameCtrl.text.trim().isNotEmpty && _step == 0) {
-                setState(() => _step = 1);
-              }
-            },
-          ),
+          if (OwnerGuardService.isRegistered)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.green.shade900.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade700, width: 1),
+              ),
+              child: Row(children: [
+                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Ya configurado con el nombre: ${OwnerGuardService.ownerName}',
+                    style: const TextStyle(color: Colors.greenAccent, fontSize: 14),
+                  ),
+                ),
+              ]),
+            )
+          else
+            _inputField(
+              controller: _nameCtrl,
+              hint: 'Ej: Carlos Rodríguez',
+              icon: Icons.person_outline,
+              onChanged: (_) {
+                if (_nameCtrl.text.trim().isNotEmpty && _step == 0) {
+                  setState(() => _step = 1);
+                }
+              },
+            ),
           const SizedBox(height: 28),
 
           // PASO 2 — Frase de voz
