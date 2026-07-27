@@ -84,18 +84,14 @@ class _HomeScreenState extends State<HomeScreen>
     if (_started) return;
     setState(() { _started = true; });
     await Future.delayed(const Duration(milliseconds: 300));
-    // Pido la ubicación AHORA (tras el primer gesto del usuario — evita
-    // el Uncaught Error de Edge/Firefox con Tracking Prevention).
-    // ignore: unawaited_futures
     LocationService.requestNow();
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
     final mensaje = '$saludo. Soy AETHERIS. ¿En qué te puedo ayudar?';
-    await _voice.speak(mensaje);
+    try {
+      await _voice.speak(mensaje);
+    } catch (_) {}
     _syncVoiceState();
-    if (kIsWeb) {
-      await _voice.startContinuous();
-    }
     if (mounted) _loop();
   }
 
@@ -657,16 +653,16 @@ class _HomeScreenState extends State<HomeScreen>
                     if (_voice.speaking) {
                       _voice.stopSpeaking();
                       _syncVoiceState();
-                    } else if (kIsWeb && !_looping) {
-                      _webStart();
-                    } else if (_looping) {
-                      _looping = false;
-                      _voice.stop();
-                      Future.delayed(const Duration(milliseconds: 500), () {
+                    } else if (!_started) {
+                      _start();
+                    } else {
+                      if (_looping) {
+                        _looping = false;
+                        _busy = false;
+                      }
+                      Future.delayed(const Duration(milliseconds: 200), () {
                         if (mounted) _loop();
                       });
-                    } else {
-                      _loop();
                     }
                   },
                   child: AnimatedBuilder(
