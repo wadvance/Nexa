@@ -195,7 +195,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: (_step >= 1 && !_recording) ? _recordVoice : null,
+              onPressed: (_step >= 1 && !_recording && _voice.sttReady) ? _recordVoice : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _recording
                     ? Colors.red.shade700
@@ -215,6 +215,15 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
               ),
             ),
           ),
+          if (!_voice.sttReady)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '⚠ El reconocimiento de voz no está disponible en este dispositivo. '
+                'Se usará solo la frase secreta como respaldo.',
+                style: TextStyle(color: Colors.amber, fontSize: 11),
+              ),
+            ),
           if (_voiceSample.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
@@ -247,6 +256,15 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             obscure: true,
             enabled: _step >= 2,
           ),
+          const SizedBox(height: 12),
+          if (_step < 2)
+            TextButton(
+              onPressed: _voiceSample.isEmpty ? null : () => setState(() => _step = 2),
+              child: const Text(
+                'Omitir frase de voz → usar solo contraseña de texto',
+                style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 12),
+              ),
+            ),
           const SizedBox(height: 32),
 
           // Mensaje de estado
@@ -292,6 +310,53 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                       style: TextStyle(fontSize: 17, color: Colors.white)),
             ),
           ),
+
+// Opción de recuperación - restablecer acceso del propietario
+          if (OwnerGuardService.isRegistered) ...[
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton.icon(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF1E1E2E),
+                      title: const Text('Recuperar acceso',
+                          style: TextStyle(color: Colors.white)),
+                      content: const Text(
+                          '¿Olvidaste tu frase de voz o contraseña? '
+                          'Esto borrará el perfil actual y podrás registrar uno nuevo.',
+                          style: TextStyle(color: Colors.white70)),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar',
+                                style: TextStyle(color: Colors.grey))),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Restablecer',
+                                style: TextStyle(color: Colors.orangeAccent))),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await OwnerGuardService.clearOwnerProfile();
+                    if (mounted) {
+                      setState(() {
+                        _step = 0;
+                        _voiceSample = '';
+                        _phraseCtrl.clear();
+                        _statusMessage = 'Perfil borrado. Regístrate de nuevo.';
+                      });
+                    }
+                  }
+                },
+                icon: const Icon(Icons.restore, color: Colors.orangeAccent, size: 18),
+                label: const Text('Recuperar acceso / Restablecer',
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+              ),
+            ),
+          ],
 
           // Borrar perfil existente
           if (OwnerGuardService.isRegistered) ...[

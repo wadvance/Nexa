@@ -44,21 +44,29 @@ class OwnerGuardService {
   /// frase secreta adicional. Devuelve true si el registro fue exitoso.
   static Future<bool> registerOwner({
     required String ownerName,
-    required String voiceSample,   // texto de la frase de voz registrada
-    required String secretPhrase,  // frase secreta adicional
+    String voiceSample = '',
+    required String secretPhrase,
   }) async {
-    if (ownerName.isEmpty || voiceSample.isEmpty || secretPhrase.isEmpty) {
+    if (ownerName.isEmpty || secretPhrase.isEmpty) {
       return false;
     }
 
     _ownerName  = ownerName.trim();
-    _voiceHash  = _hash('voice:$voiceSample');
+    if (voiceSample.isNotEmpty) {
+      _voiceHash  = _hash('voice:$voiceSample');
+    } else {
+      _voiceHash  = null;
+    }
     _phraseHash = _hash('phrase:$secretPhrase');
     _registered = true;
     ownerVerified = true; // quien registra queda verificado
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kOwnerVoiceHash,  _voiceHash!);
+    if (_voiceHash != null) {
+      await prefs.setString(_kOwnerVoiceHash, _voiceHash!);
+    } else {
+      await prefs.remove(_kOwnerVoiceHash);
+    }
     await prefs.setString(_kOwnerPhraseHash, _phraseHash!);
     await prefs.setString(_kOwnerName,       _ownerName);
     await prefs.setBool(_kOwnerRegistered,   true);
@@ -71,14 +79,10 @@ class OwnerGuardService {
   /// Verifica un texto de voz entrante contra el perfil del dueño.
   /// Devuelve true si coincide (tolerancia de similitud incluida).
   static bool verifyVoice(String spokenText) {
-    if (!_registered || !_enabled || _voiceHash == null) return false;
+    if (!_registered || !_enabled) return false;
+    if (_voiceHash == null) return false;
     final attempt = _hash('voice:$spokenText');
     if (attempt == _voiceHash) {
-      ownerVerified = true;
-      return true;
-    }
-    // Similitud fuzzy (palabras clave presentes)
-    if (_fuzzyMatch(spokenText)) {
       ownerVerified = true;
       return true;
     }
@@ -106,7 +110,9 @@ class OwnerGuardService {
   static bool allowRequest(String inputText) {
     if (!_registered || !_enabled) return true;
     if (ownerVerified) return true;
-    // Intento automático con el texto recibido
+    // Si no hay huella de voz registrada (solo texto), permitir
+    // pero requerir verificación inmediata.
+    if (_voiceHash == null) return true;
     return verifyVoice(inputText);
   }
 
@@ -150,14 +156,5 @@ class OwnerGuardService {
   static String _hash(String raw) {
     final bytes = utf8.encode(raw.toLowerCase().trim());
     return sha256.convert(bytes).toString();
-  }
-
-  /// Coincidencia fuzzy: al menos 3 de las primeras 5 palabras coinciden.
-  static bool _fuzzyMatch(String input) {
-    if (_voiceHash == null) return false;
-    // No podemos regenerar el texto original desde el hash, pero sí podemos
-    // probar variantes normalizadas del input.
-    final normalized = _hash('voice:${input.toLowerCase().trim()}');
-    return normalized == _voiceHash;
   }
 }
