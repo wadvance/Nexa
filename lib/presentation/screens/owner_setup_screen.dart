@@ -274,7 +274,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
           // PASO 1 — Nombre
           _sectionLabel('1. Tu nombre'),
           const SizedBox(height: 8),
-          if (OwnerGuardService.isRegistered)
+          if (OwnerGuardService.isRegistered) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -293,8 +293,8 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                   ),
                 ),
               ]),
-            )
-          else ...[
+            ),
+          ] else ...[
             _inputField(
               controller: _nameCtrl,
               hint: 'Ej: Carlos Rodríguez',
@@ -302,18 +302,23 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 6),
-            if (OwnerGuardService.isRegistered)
-              Text(
-                'Ya existe un propietario registrado. Si cambiaste de dispositivo, '
-                'toca "¿Olvidaste tu contraseña?" abajo.',
-                style: TextStyle(color: Colors.orangeAccent.withValues(alpha: 0.8), fontSize: 11),
-              )
-            else if (_nameCtrl.text.trim().isNotEmpty)
-              Text(
-                'Nombre nuevo. Podrás continuar con el registro.',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
-              ),
           ],
+          if (!OwnerGuardService.isRegistered && _nameCtrl.text.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _nameCtrl.text.trim().toLowerCase() == OwnerGuardService.ownerName.toLowerCase()
+                    ? 'Este nombre ya esta registrado.'
+                    : 'Nombre nuevo. Podras continuar con el registro.',
+                style: TextStyle(
+                  color: _nameCtrl.text.trim().toLowerCase() == OwnerGuardService.ownerName.toLowerCase()
+                      ? Colors.orangeAccent
+                      : Colors.greenAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           const SizedBox(height: 28),
 
           // PASO 2 — Frase de voz
