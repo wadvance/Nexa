@@ -386,16 +386,25 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStart() {
     return SafeArea(
-      child: Stack(
+      child: Column(
         children: [
-          // Icono de configuración (solo si no hay propietario)
-          if (!OwnerGuardService.isRegistered)
-            Positioned(
-              top: 12, right: 12,
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, right: 8),
               child: IconButton(
-                icon: const Icon(Icons.manage_accounts,
-                    color: Colors.white38, size: 28),
-                tooltip: 'Configurar propietario',
+                icon: Icon(
+                  OwnerGuardService.isRegistered
+                      ? Icons.check_circle
+                      : Icons.settings,
+                  color: OwnerGuardService.isRegistered
+                      ? Colors.greenAccent
+                      : Colors.white54,
+                  size: 28,
+                ),
+                tooltip: OwnerGuardService.isRegistered
+                    ? 'Propietario: ${OwnerGuardService.ownerName}'
+                    : 'Configurar propietario',
                 onPressed: () async {
                   if (!mounted) return;
                   await Navigator.push(context, MaterialPageRoute(
@@ -404,207 +413,198 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
             ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-              // Orb de seguridad animada
-              AnimatedBuilder(
-                animation: _pulse,
-                builder: (_, __) => Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF7C4DFF).withValues(alpha: 0.3),
-                        const Color(0xFF448AFF).withValues(alpha: 0.15),
-                        const Color(0xFF00E5FF).withValues(alpha: 0.05),
-                        Colors.transparent,
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF7C4DFF).withValues(
-                            alpha: 0.3 + _pulse.value * 0.2),
-                        blurRadius: 40 + _pulse.value * 20,
-                        spreadRadius: 10,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(
-                            alpha: 0.15 + _pulse.value * 0.1),
-                        blurRadius: 60 + _pulse.value * 15,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Anillo exterior
-                      Transform.rotate(
-                        angle: _pulse.value * 0.5,
-                        child: Container(
-                          width: 170,
-                          height: 170,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Anillo medio
-                      Transform.rotate(
-                        angle: -_pulse.value * 0.3,
-                        child: Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Núcleo central
-                      Container(
-                        width: 100,
-                        height: 100,
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulse,
+                      builder: (_, __) => Container(
+                        width: 180,
+                        height: 180,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const RadialGradient(
+                          gradient: RadialGradient(
                             colors: [
-                              Color(0xFF7C4DFF),
-                              Color(0xFF448AFF),
-                              Color(0xFF3D5AFE),
+                              const Color(0xFF7C4DFF).withValues(alpha: 0.3),
+                              const Color(0xFF448AFF).withValues(alpha: 0.15),
+                              const Color(0xFF00E5FF).withValues(alpha: 0.05),
+                              Colors.transparent,
                             ],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.8),
-                              blurRadius: 30,
+                              color: const Color(0xFF7C4DFF).withValues(
+                                  alpha: 0.3 + _pulse.value * 0.2),
+                              blurRadius: 40 + _pulse.value * 20,
+                              spreadRadius: 10,
+                            ),
+                            BoxShadow(
+                              color: const Color(0xFF00E5FF).withValues(
+                                  alpha: 0.15 + _pulse.value * 0.1),
+                              blurRadius: 60 + _pulse.value * 15,
                               spreadRadius: 5,
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.shield_outlined,
-                          size: 48,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Transform.rotate(
+                              angle: _pulse.value * 0.5,
+                              child: Container(
+                                width: 170,
+                                height: 170,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Transform.rotate(
+                              angle: -_pulse.value * 0.3,
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const RadialGradient(
+                                  colors: [
+                                    Color(0xFF7C4DFF),
+                                    Color(0xFF448AFF),
+                                    Color(0xFF3D5AFE),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.8),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.shield_outlined,
+                                size: 48,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 50),
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [
+                          Color(0xFF7C4DFF),
+                          Color(0xFF00E5FF),
+                          Color(0xFF7C4DFF),
+                        ],
+                      ).createShader(bounds),
+                      child: const Text(
+                        'AETHERIS',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w200,
+                          letterSpacing: 12,
                           color: Colors.white,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 50),
-
-              // Título
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [
-                    Color(0xFF7C4DFF),
-                    Color(0xFF00E5FF),
-                    Color(0xFF7C4DFF),
-                  ],
-                ).createShader(bounds),
-                child: const Text(
-                  'AETHERIS',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w200,
-                    letterSpacing: 12,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                'INTELLIGENT SECURITY SYSTEM',
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 4,
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-
-              const SizedBox(height: 60),
-
-              // Botón de inicio
-              SizedBox(
-                width: 240,
-                height: 68,
-                child: AnimatedBuilder(
-                  animation: _pulse,
-                  builder: (_, __) => Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(34),
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF7C4DFF),
-                          Color.lerp(
-                            const Color(0xFF7C4DFF),
-                            const Color(0xFF00E5FF),
-                            _pulse.value,
-                          )!,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF7C4DFF).withValues(
-                              alpha: 0.4 + _pulse.value * 0.2),
-                          blurRadius: 20 + _pulse.value * 10,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: ElevatedButton(
-                      onPressed: _start,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(34),
-                        ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'INTELLIGENT SECURITY SYSTEM',
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 4,
+                        color: Colors.white.withValues(alpha: 0.35),
+                        fontWeight: FontWeight.w400,
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.mic, color: Colors.white, size: 28),
-                          SizedBox(width: 12),
-                          Text(
-                            'INICIAR',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 4,
+                    ),
+                    const SizedBox(height: 60),
+                    SizedBox(
+                      width: 240,
+                      height: 68,
+                      child: AnimatedBuilder(
+                        animation: _pulse,
+                        builder: (_, __) => Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(34),
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF7C4DFF),
+                                Color.lerp(
+                                  const Color(0xFF7C4DFF),
+                                  const Color(0xFF00E5FF),
+                                  _pulse.value,
+                                )!,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C4DFF).withValues(
+                                    alpha: 0.4 + _pulse.value * 0.2),
+                                blurRadius: 20 + _pulse.value * 10,
+                                spreadRadius: 2,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _start,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(34),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.mic, color: Colors.white, size: 28),
+                                SizedBox(width: 12),
+                                Text(
+                                  'INICIAR',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 4,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-      ],
+        ],
       ),
     );
   }
