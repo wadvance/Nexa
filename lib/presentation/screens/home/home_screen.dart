@@ -386,12 +386,30 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStart() {
     return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      child: Stack(
+        children: [
+          // Icono de configuración (solo si no hay propietario)
+          if (!OwnerGuardService.isRegistered)
+            Positioned(
+              top: 12, right: 12,
+              child: IconButton(
+                icon: const Icon(Icons.manage_accounts,
+                    color: Colors.white38, size: 28),
+                tooltip: 'Configurar propietario',
+                onPressed: () async {
+                  if (!mounted) return;
+                  await Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const OwnerSetupScreen()));
+                  if (mounted) setState(() {});
+                },
+              ),
+            ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
               // Orb de seguridad animada
               AnimatedBuilder(
                 animation: _pulse,
@@ -585,6 +603,8 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
+      ),
+      ],
       ),
     );
   }

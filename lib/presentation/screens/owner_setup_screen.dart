@@ -294,17 +294,31 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                 ),
               ]),
             )
-          else
+          else ...[
             _inputField(
               controller: _nameCtrl,
               hint: 'Ej: Carlos Rodríguez',
               icon: Icons.person_outline,
-              onChanged: (_) {
-                if (_nameCtrl.text.trim().isNotEmpty && _step == 0) {
-                  setState(() => _step = 1);
-                }
-              },
+              onChanged: (_) => setState(() {}),
             ),
+            if (_nameCtrl.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _nameCtrl.text.trim().toLowerCase() ==
+                      OwnerGuardService.ownerName.toLowerCase()
+                      ? '✓ Usuario ya registrado'
+                      : 'Usuario no registrado',
+                  style: TextStyle(
+                    color: _nameCtrl.text.trim().toLowerCase() ==
+                        OwnerGuardService.ownerName.toLowerCase()
+                        ? Colors.greenAccent
+                        : Colors.white.withValues(alpha: 0.4),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
           const SizedBox(height: 28),
 
           // PASO 2 — Frase de voz
