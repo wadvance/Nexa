@@ -7,6 +7,7 @@ import '../../../domain/voice_commands.dart';
 import '../../../services/conversation_memory_service.dart';
 import '../../../services/location_service.dart';
 import '../../../services/voice_auth_service.dart';
+import '../../../services/owner_guard_service.dart';
 import '../../../utils/logger.dart';
 import '../owner_setup_screen.dart';
 
@@ -605,19 +606,18 @@ class _HomeScreenState extends State<HomeScreen>
                       fontWeight: FontWeight.bold, fontSize: 15,
                       letterSpacing: 2)),
               Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.manage_accounts,
-                      color: Colors.white38, size: 22),
-                  tooltip: 'Propietario',
-                  onPressed: () async {
-                    if (!mounted) return;
-                    final result = await Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => const OwnerSetupScreen()));
-                    if (result == true && mounted && !_started) {
-                      _start();
-                    }
-                  },
-                ),
+                if (!OwnerGuardService.isRegistered)
+                  IconButton(
+                    icon: const Icon(Icons.manage_accounts,
+                        color: Colors.white38, size: 22),
+                    tooltip: 'Propietario',
+                    onPressed: () async {
+                      if (!mounted) return;
+                      await Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const OwnerSetupScreen()));
+                      if (mounted) setState(() {});
+                    },
+                  ),
               ]),
             ],
           ),
