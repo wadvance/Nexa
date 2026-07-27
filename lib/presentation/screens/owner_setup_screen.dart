@@ -132,6 +132,16 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   @override
+  void initState() {
+    super.initState();
+    if (OwnerGuardService.isRegistered) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.pop(context, true);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -511,6 +521,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
         obscureText: obscure,
         enabled: enabled,
         onChanged: onChanged,
+        autofillHints: const <String>[],
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: hint,
