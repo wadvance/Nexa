@@ -33,8 +33,8 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   bool   _done          = false;
   bool   _obscureSecret = true;
 
-  // Step: 0=nombre, 1=voz, 2=frase secreta, 3=confirmar
-  int _step = OwnerGuardService.isRegistered ? 1 : 0;
+
+
 
   @override
   void dispose() {
@@ -67,13 +67,11 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     setState(() {
       _recording = false;
       if (result.isEmpty) {
-        _statusMessage = 'Sin respuesta de voz. Avanzando a frase secreta.';
+        _statusMessage = 'Sin respuesta de voz. Puedes usar solo la frase secreta.';
         _skipVoice     = true;
-        _step          = 2;
       } else {
         _voiceSample   = result;
         _statusMessage = 'Frase capturada: "$result"';
-        _step          = 2;
       }
     });
   }
@@ -90,10 +88,6 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
 
     if (name.isEmpty) {
       _setStatus('Ingresa tu nombre primero.');
-      return;
-    }
-    if (_voiceSample.isEmpty && !_skipVoice) {
-      _setStatus('Primero graba tu frase de voz.');
       return;
     }
     if (phrase.length < 6) {
@@ -274,7 +268,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
           // PASO 1 — Nombre
           _sectionLabel('1. Tu nombre'),
           const SizedBox(height: 8),
-          if (OwnerGuardService.isRegistered) ...[
+          if (OwnerGuardService.isRegistered)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -294,25 +288,23 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                 ),
               ]),
             ),
-          ] else ...[
+          if (!OwnerGuardService.isRegistered)
             _inputField(
               controller: _nameCtrl,
-              hint: 'Ej: Carlos Rodríguez',
+              hint: 'Ej: Carlos Rodriguez',
               icon: Icons.person_outline,
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 6),
-          ],
-          if (!OwnerGuardService.isRegistered && _nameCtrl.text.trim().isNotEmpty)
+          if (!OwnerGuardService.isRegistered)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
-                _nameCtrl.text.trim().toLowerCase() == OwnerGuardService.ownerName.toLowerCase()
-                    ? 'Este nombre ya esta registrado.'
-                    : 'Nombre nuevo. Podras continuar con el registro.',
+                _nameCtrl.text.trim().isEmpty
+                    ? 'Escribe tu nombre para continuar'
+                    : 'Nombre listo para registrar',
                 style: TextStyle(
-                  color: _nameCtrl.text.trim().toLowerCase() == OwnerGuardService.ownerName.toLowerCase()
-                      ? Colors.orangeAccent
+                  color: _nameCtrl.text.trim().isEmpty
+                      ? Colors.white.withValues(alpha: 0.3)
                       : Colors.greenAccent,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -334,7 +326,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: (_step >= 1 && !_recording) ? _recordVoice : null,
+              onPressed: (!_recording) ? _recordVoice : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _recording
                     ? Colors.red.shade700
@@ -393,18 +385,9 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             hint: 'Frase o contraseña secreta',
             icon: Icons.lock_outline,
             obscure: _obscureSecret,
-            enabled: _step >= 2,
             onToggleObscure: () => setState(() => _obscureSecret = !_obscureSecret),
           ),
           const SizedBox(height: 12),
-          if (_step < 2)
-            TextButton(
-              onPressed: () => setState(() => _step = 2),
-              child: const Text(
-                'Omitir frase de voz  usar solo contrase�a de texto',
-                style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 12),
-              ),
-            ),
           const SizedBox(height: 32),
 
           // Mensaje de estado
@@ -483,7 +466,6 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                     await OwnerGuardService.clearOwnerProfile();
                     if (mounted) {
                       setState(() {
-                        _step = 0;
                         _voiceSample = '';
                         _skipVoice = false;
                         _phraseCtrl.clear();
