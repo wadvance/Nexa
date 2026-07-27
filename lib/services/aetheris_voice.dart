@@ -153,10 +153,6 @@ class AetherisVoice {
   // ── STT ───────────────────────────────────────────────────────────────────
 
   Future<String> listenOnce() async {
-    if (!_speech.isAvailable) {
-      AppLogger.warn('STT no disponible');
-      return '';
-    }
     if (voiceState == VoiceState.speaking) {
       AppLogger.warn('STT: TTS activo, saltado');
       return '';
