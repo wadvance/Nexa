@@ -52,23 +52,28 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     setState(() {
       _recording     = true;
       _skipVoice     = false;
-      _statusMessage = 'Escuchando. lee la frase en voz alta.';
+      _statusMessage = 'Intentando grabar...';
     });
 
-    await _voice.speak(
-        'Di en voz alta tu frase de voz. Por ejemplo: AETHERIS soy el propietario.');
+    try {
+      await _voice.speak(
+          'Di en voz alta tu frase de voz.');
+    } catch (_) {}
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
     final result = await _voice.listenOnce();
 
     setState(() {
       _recording = false;
       if (result.isEmpty) {
-        _statusMessage = 'No se captur� la voz. Continuar sin grabaci�n.';
+        _statusMessage = 'Sin respuesta de voz. Avanzando a frase secreta.';
         _skipVoice     = true;
         _step          = 2;
       } else {
         _voiceSample   = result;
         _statusMessage = 'Frase capturada: "$result"';
-        _step          = 2; // avanzar al paso de frase secreta
+        _step          = 2;
       }
     });
   }

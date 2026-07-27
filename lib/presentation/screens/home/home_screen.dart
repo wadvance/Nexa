@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool   _started    = false;
   bool   _looping    = false;
   bool   _muted      = false;
+  bool   _sttFailed  = false;
   String _lastResponse = '';
 
   // Historial
@@ -202,15 +203,14 @@ class _HomeScreenState extends State<HomeScreen>
           AppLogger.info('Loop: texto vacío o corto (count: $emptyResultCount)');
           if (emptyResultCount >= 3) {
             emptyResultCount = 0;
-            await _voice.speak(
-              'No puedo escuchar tu voz. Toca el orbe y vuelve a hablar.',
-            );
-            _syncVoiceState();
+            if (mounted) setState(() => _sttFailed = true);
+            AppLogger.warn('Loop: STT sin respuesta tras 3 intentos');
           }
           await Future.delayed(const Duration(milliseconds: 300));
           continue;
         }
         emptyResultCount = 0;
+        if (_sttFailed && mounted) setState(() => _sttFailed = false);
         // Ignorar palabras sueltas que son probablemente eco
         final trimmed = texto.trim().toLowerCase();
         if (texto.length < 10 && RegExp(r'^(s[íi]|si|no|ok|hey|ah|oh|eh|a|y|e|o|hola|bueno|bien|gracias|sabes|vale|listo|ya|dale|claro)$', caseSensitive: false).hasMatch(trimmed)) {
@@ -642,7 +642,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ? const Color(0xFFF44336)
                     : active
                         ? const Color(0xFF7C4DFF)
-                        : const Color(0xFF3D5AFE);
+                        : _sttFailed
+                            ? const Color(0xFFFF9800)
+                            : const Color(0xFF3D5AFE);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 32),
@@ -771,7 +773,9 @@ class _HomeScreenState extends State<HomeScreen>
                             ? 'ESCUCHANDO'
                             : active
                                 ? 'PROCESANDO'
-                                : 'LISTO',
+                                : _sttFailed
+                                    ? 'SIN MICRO - TOCA PARA REINICIAR'
+                                    : 'LISTO',
                     key: ValueKey(voiceState),
                     style: TextStyle(
                       color: orbColor.withValues(alpha: 0.7),
