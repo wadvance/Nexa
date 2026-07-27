@@ -200,7 +200,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed: (_step >= 1 && !_recording && _voice.sttReady) ? _recordVoice : null,
+              onPressed: (_step >= 1 && !_recording) ? _recordVoice : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _recording
                     ? Colors.red.shade700
