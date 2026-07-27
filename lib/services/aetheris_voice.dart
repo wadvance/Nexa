@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'voice_loader_stub.dart'
     if (dart.library.js_interop) 'voice_loader_web.dart';
@@ -64,8 +65,24 @@ class AetherisVoice {
       AppLogger.error('TTS error: $msg');
     });
 
+    if (!kIsWeb) {
+      AppLogger.info('STT: requesting RECORD_AUDIO permission...');
+      final status = await Permission.microphone.status;
+      AppLogger.info('STT: permission status = $status');
+      if (!status.isGranted) {
+        final result = await Permission.microphone.request();
+        AppLogger.info('STT: permission request result = $result');
+        if (!result.isGranted) {
+          AppLogger.error('STT: RECORD_AUDIO permission DENIED by user');
+          AppLogger.info('=== VOICE READY sttReady=false (no permission) ===');
+          return;
+        }
+      }
+    }
+
     for (int attempt = 1; attempt <= 3; attempt++) {
       try {
+        AppLogger.info('STT: initializing (attempt $attempt)...');
         await _speech.initialize(
           onError: (e) {
             AppLogger.error('STT error: ${e.errorMsg}');
@@ -92,6 +109,17 @@ class AetherisVoice {
   /// Re-inicializa el STT si no está disponible
   Future<bool> reinitializeStt() async {
     AppLogger.info('Re-inicializando STT...');
+    if (!kIsWeb) {
+      final status = await Permission.microphone.status;
+      if (!status.isGranted) {
+        final result = await Permission.microphone.request();
+        AppLogger.info('STT reinit: permission request = $result');
+        if (!result.isGranted) {
+          AppLogger.error('STT reinit: permission denied');
+          return false;
+        }
+      }
+    }
     for (int attempt = 1; attempt <= 3; attempt++) {
       try {
         await _speech.initialize(
