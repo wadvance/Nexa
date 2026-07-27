@@ -45,6 +45,62 @@ class WebAetherisVoice extends AetherisVoice {
   bool get sttReady => _webSttReady;
 
   @override
+  Future<bool> reinitializeStt() async {
+    AppLogger.info('Web: reinitializeStt — reintentando webkitSpeechRecognition');
+    if (_webSpeech == null) {
+      try {
+        _webSpeech = _WebSpeechRecognizer();
+        _webSpeech!.continuous = true;
+        _webSpeech!.interimResults = true;
+        _webSpeech!.lang = 'es-PA';
+        _webSpeech!.onerror = ((web.Event e) {
+          AppLogger.warn('WebSpeech error: $e');
+        }).toJS;
+        _webSpeech!.onend = ((web.Event e) {
+          AppLogger.info('WebSpeech onend');
+          _finalDebounce?.cancel();
+          _stabilityTimer?.cancel();
+          _deliverAccumulated();
+          if (_webSttActive && _webSpeech != null) {
+            try { _webSpeech!.start(); } catch (_) {}
+          }
+        }).toJS;
+        _webSpeech!.onresult = ((web.Event e) {
+          final se = e as web.SpeechRecognitionEvent;
+          final results = se.results;
+          if (results.length == 0) return;
+          final last = results.item(results.length - 1);
+          final transcript = last.item(0).transcript.trim();
+          final isFinal = last.isFinal;
+          if (transcript.isEmpty) return;
+          AppLogger.info('WebSpeech: "$transcript" final=$isFinal');
+          _stabilityTimer?.cancel();
+          _finalDebounce?.cancel();
+          if (isFinal) {
+            _accumFinal += '$transcript ';
+            _finalDebounce = Timer(const Duration(milliseconds: 1500), () {
+              _deliverAccumulated();
+            });
+          } else {
+            _stabilityTimer = Timer(const Duration(milliseconds: 500), () {
+              if (_accumFinal.isEmpty && _pendingFinalCompleter != null) {
+                _pendingFinalCompleter!.complete(transcript);
+                _pendingFinalCompleter = null;
+              }
+            });
+          }
+        }).toJS;
+      } catch (e) {
+        AppLogger.error('Web: reinitializeStt — no se pudo crear recognizer: $e');
+        return false;
+      }
+    }
+    _webSttReady = true;
+    AppLogger.info('Web: reinitializeStt — sttReady=true');
+    return true;
+  }
+
+  @override
   Future<void> init() async {
     AppLogger.info('=== WEB VOICE INIT ===');
 

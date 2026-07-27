@@ -104,13 +104,14 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     );
 
     if (ok) {
-      await _voice.speak(
-          'Perfil de propietario registrado. Bienvenido, $name.');
       setState(() {
         _saving        = false;
         _done          = true;
         _statusMessage = '✓ Perfil registrado correctamente.';
       });
+      // TTS en background — no bloquear la UI
+      _voice.speak('Perfil de propietario registrado. Bienvenido, $name.')
+          .catchError((_) {});
     } else {
       setState(() {
         _saving        = false;
