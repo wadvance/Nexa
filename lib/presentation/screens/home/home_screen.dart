@@ -84,6 +84,14 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() { _started = true; });
     await Future.delayed(const Duration(milliseconds: 300));
     if (!kIsWeb) LocationService.requestNow();
+
+    // En web: iniciar STT AHORA (durante el gesto del usuario) para que
+    // el navegador permita el acceso al micrófono antes de que expire el
+    // gesto de usuario.
+    if (kIsWeb && _voice.sttReady) {
+      await _voice.startContinuous();
+    }
+
     final h = DateTime.now().hour;
     final saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
     final mensaje = '$saludo. Soy AETHERIS. ¿En qué te puedo ayudar?';
@@ -175,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen>
             final success = await _voice.reinitializeStt();
             if (!success) {
               AppLogger.error('Loop: STT re-initialization failed');
+              if (mounted) setState(() => _sttFailed = true);
             }
             sttNotReadyCount = 0;
           }
