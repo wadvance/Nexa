@@ -154,21 +154,8 @@ class AetherisVoice {
 
   Future<String> listenOnce() async {
     if (!_speech.isAvailable) {
-      AppLogger.warn('STT no disponible, intentando re-inicializar');
-      try {
-        await _speech.initialize(
-          onError: (e) => AppLogger.error('STT error: ${e.errorMsg}'),
-          onStatus: (s) => AppLogger.info('STT status: $s'),
-          debugLogging: false,
-        );
-      } catch (e) {
-        AppLogger.error('STT re-init failed: $e');
-        return '';
-      }
-      if (!_speech.isAvailable) {
-        AppLogger.warn('STT aún no disponible tras re-init');
-        return '';
-      }
+      AppLogger.warn('STT no disponible');
+      return '';
     }
     if (voiceState == VoiceState.speaking) {
       AppLogger.warn('STT: TTS activo, saltado');
