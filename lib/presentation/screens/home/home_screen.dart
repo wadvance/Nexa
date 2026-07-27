@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   final AetherisVoice _voice    = AetherisVoice.instance;
   final VoiceCommands _commands = VoiceCommands();
+  final TextEditingController _textCtrl = TextEditingController();
 
   bool   _busy       = false;
   bool   _started    = false;
@@ -55,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen>
     _pulse.dispose();
     _voiceState.dispose();
     _unauthorizedWarning.dispose();
+    _textCtrl.dispose();
     _voice.stop();
     super.dispose();
   }
@@ -848,6 +850,52 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ]),
 
+                // ── Campo de texto (fallback cuando STT no funciona) ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  child: Row(children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Escribe tu pregunta...',
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
+                          prefixIcon: const Icon(Icons.keyboard, color: Colors.deepPurpleAccent, size: 20),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.deepPurple.shade800),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.deepPurple.shade800),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Colors.deepPurpleAccent, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        onSubmitted: (_) => _sendText(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: _sendText,
+                      child: Container(
+                        width: 48, height: 48,
+                        decoration: const BoxDecoration(
+                          color: Colors.deepPurpleAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.send, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ]),
+                ),
+
               ]),
             );
           },
@@ -857,7 +905,14 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── Historial ─────────────────────────────────────────────────────────────
+  // ── Enviar texto ─────────────────────────────────────────────────────────
+
+  void _sendText() {
+    final texto = _textCtrl.text.trim();
+    if (texto.isEmpty || _busy) return;
+    _textCtrl.clear();
+    _processAndRespond(texto);
+  }
 
   Widget _buildHistory() {
     return SafeArea(
