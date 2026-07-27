@@ -301,22 +301,17 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
               icon: Icons.person_outline,
               onChanged: (_) => setState(() {}),
             ),
-            if (_nameCtrl.text.trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _nameCtrl.text.trim().toLowerCase() ==
-                      OwnerGuardService.ownerName.toLowerCase()
-                      ? '✓ Usuario ya registrado'
-                      : 'Usuario no registrado',
-                  style: TextStyle(
-                    color: _nameCtrl.text.trim().toLowerCase() ==
-                        OwnerGuardService.ownerName.toLowerCase()
-                        ? Colors.greenAccent
-                        : Colors.white.withValues(alpha: 0.4),
-                    fontSize: 12,
-                  ),
-                ),
+            const SizedBox(height: 6),
+            if (OwnerGuardService.isRegistered)
+              Text(
+                'Ya existe un propietario registrado. Si cambiaste de dispositivo, '
+                'toca "¿Olvidaste tu contraseña?" abajo.',
+                style: TextStyle(color: Colors.orangeAccent.withValues(alpha: 0.8), fontSize: 11),
+              )
+            else if (_nameCtrl.text.trim().isNotEmpty)
+              Text(
+                'Nombre nuevo. Podrás continuar con el registro.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
               ),
           ],
           const SizedBox(height: 28),
