@@ -215,15 +215,15 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
               ),
             ),
           ),
-          if (!_voice.sttReady)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '⚠ El reconocimiento de voz no está disponible en este dispositivo. '
-                'Se usará solo la frase secreta como respaldo.',
-                style: TextStyle(color: Colors.amber, fontSize: 11),
-              ),
-            ),
+           if (!_voice.sttReady)
+             const Padding(
+               padding: EdgeInsets.only(top: 8),
+               child: Text(
+                 '⚠ El reconocimiento de voz no está disponible en este dispositivo. '
+                 'Se usará solo la frase secreta como respaldo.',
+                 style: TextStyle(color: Colors.amber, fontSize: 11),
+               ),
+             ),
           if (_voiceSample.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
