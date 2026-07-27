@@ -134,15 +134,97 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   @override
   void initState() {
     super.initState();
-    if (OwnerGuardService.isRegistered) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.pop(context, true);
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (OwnerGuardService.isRegistered) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF121212),
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple.shade900,
+          title: const Text('Configurar Propietario', style: TextStyle(color: Colors.white)),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 64),
+                const SizedBox(height: 20),
+                const Text(
+                  'Propietario ya registrado',
+                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Nombre: ${OwnerGuardService.ownerName}',
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'La configuración está activa. AETHERIS reconocerá tu voz.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurpleAccent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Volver', style: TextStyle(fontSize: 17, color: Colors.white)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: const Color(0xFF1E1E2E),
+                        title: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.white)),
+                        content: const Text(
+                          'Esto borrará tu perfil de propietario. '
+                          'Podrás registrar uno nuevo con tu nombre y contraseña.',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Borrar y re-registrar', style: TextStyle(color: Colors.orangeAccent)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await OwnerGuardService.clearOwnerProfile();
+                      if (mounted) {
+                        setState(() {});
+                      }
+                    }
+                  },
+                  child: const Text(
+                    '¿Olvidaste tu contraseña?',
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
