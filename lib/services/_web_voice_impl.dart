@@ -52,7 +52,7 @@ class WebAetherisVoice extends AetherisVoice {
         _webSpeech = _WebSpeechRecognizer();
         _webSpeech!.continuous = true;
         _webSpeech!.interimResults = true;
-        _webSpeech!.lang = 'es-PA';
+        _webSpeech!.lang = 'es-419';
         _webSpeech!.onerror = ((web.Event e) {
           AppLogger.warn('WebSpeech error: $e');
         }).toJS;
@@ -112,7 +112,7 @@ class WebAetherisVoice extends AetherisVoice {
       _webSpeech = _WebSpeechRecognizer();
       _webSpeech!.continuous = true;
       _webSpeech!.interimResults = true;
-      _webSpeech!.lang = 'es-PA';
+      _webSpeech!.lang = 'es-419';
 
       _webSpeech!.onresult = ((web.Event e) {
         final se = e as web.SpeechRecognitionEvent;
@@ -167,7 +167,7 @@ class WebAetherisVoice extends AetherisVoice {
       AppLogger.warn('WebSpeech no disponible: $e');
     }
 
-    _utterance.lang = 'es-PA';
+    _utterance.lang = 'es-419';
     _utterance.rate = 1.08;
     _utterance.pitch = 1.0;
     AppLogger.info('=== WEB VOICE sttReady=$_webSttReady ===');
